@@ -67,9 +67,11 @@ src-tauri/
 ├── src/
 │   ├── main.rs          起動するだけ
 │   ├── lib.rs           Tauri の Builder。コマンドとプラグインの登録
-│   └── vault/           （M1 で作る）
-│       ├── mod.rs
+│   ├── app_state.rs     アプリの状態（Application Support の state.json）
+│   └── vault/
+│       ├── mod.rs       開いている保管庫の状態
 │       ├── commands.rs  #[tauri::command]。薄く保つ
+│       ├── error.rs     WebView に { kind, message } で返すエラー
 │       ├── fs.rs        パスの検査・置き換え保存など。Tauri に依存しない
 │       └── watch.rs     ファイル監視
 ├── capabilities/        WebView に許す権限

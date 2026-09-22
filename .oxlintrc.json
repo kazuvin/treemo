@@ -177,6 +177,8 @@
     // ---------------------------------------------------------------
     // role="caption" を div に付けている箇所が多数ある（table 以外の見出し用）
     "jsx-a11y/prefer-tag-over-role": "off",
+    // キーボードだけで使うアプリなので、開いたパレットやダイアログにはすぐフォーカスを移す
+    "jsx-a11y/no-autofocus": "off",
     // effect 内の同期 setState。外部システムとの同期だけが正当な用途なので、
     // 例外は行単位の disable コメントで名指しする。
     "react/set-state-in-effect": "error",

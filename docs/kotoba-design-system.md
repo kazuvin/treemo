@@ -336,9 +336,16 @@ tier-1 の画面端スペーシング (24 / 32 / 24) を供給するシェル。
 
 kazuvin.me（Next.js）に取り込んだものを、トークン層と文書ごと持ってきた。
 
-- **コンポーネントはまだ無い。** 上の「コンポーネント」の節にある `Button` / `Text` /
-  `Toast` / `Screen` と、コマンドパレット（`command.tsx`）は kazuvin.me の
-  `src/components/ui/` にある。要るようになったときに移植し、この節を直す。
+- **コンポーネントは要るものだけを置いている。** `src/components/ui/` にあるのは
+  `Button`（上の節と同じ 2 層の DOM）、`Kbd`（キーの表記）、`OverlayPanel`（パレットや
+  ダイアログを重ねる箱。影は使わず 1px の線で分ける）、`PromptDialog`（名前の入力と削除の確認）。
+  `Text` / `Toast` / `Screen` はまだ無い。消えて困る知らせはトーストにしない決まりなので、
+  `Toast` は要るまで入れない。
+- **コマンドパレットとクイックスイッチャーは `cmdk` で新しく書いた。** kazuvin.me の
+  `command.tsx` は移植していない。見た目は `OverlayPanel` と同じ面・線・選択色にそろえてある
+  （`features/commands/components/command-palette.tsx`）。
+- **選択状態は枠線とティントの 2 つで示す。** サイドバーの行とツリーのノードは、選んでいるものに
+  アクセントの枠線（行は左端の線）とティントを付ける。`✓` はチェックボックスだけに使う。
 - **フォントは Fontsource をそのまま読む。** kazuvin.me は欧文を `next/font` で配信していたが、
   ここは Vite なので `src/main.tsx` で `@fontsource-variable/*` を読み、`globals.css` の
   `--font-sans` / `--font-mono` は書体名を直接指す。

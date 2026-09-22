@@ -4,7 +4,7 @@
 
 | 種類 | 道具 | 対象 | 置き場所 |
 | --- | --- | --- | --- |
-| TS の単体テスト | Vitest（happy-dom） | 純粋な関数、ストア、フック | 対象と同じ場所の `*.test.ts(x)` |
+| TS の単体テスト | Vitest（happy-dom） | 純粋な関数、ストア、フック、CodeMirror の拡張 | 対象と同じ場所の `*.test.ts(x)` |
 | Rust の単体テスト | `cargo test` | 保管庫の読み書き、パスの検査 | 対象と同じファイルの `#[cfg(test)] mod tests` |
 
 ```sh
@@ -31,6 +31,10 @@ pnpm rust:check      # cargo fmt --check / clippy / test
 CodeMirror の拡張は `EditorState` だけで確かめられるものが多い（トランザクションを
 発行して `doc` と `StateField` を見る）。まずはその形で書き、DOM の計測が要るもの
 （ウィジェットの描画、ノードの大きさの実測）だけを別に考える。
+
+TREE モードの操作は `EditorView` を受け取るので、happy-dom の上に `EditorView` を作って
+確かめている（`features/tree/extensions/tree-actions.test.ts`）。ウィジェットの React も
+描かれるが、大きさは測れないので、テキストと `StateField` だけを見る。
 
 happy-dom では要素の大きさを測れない。描画まで確かめたくなったら、Vitest の
 ブラウザモード（Playwright）か Storybook のテストを入れる。入れたらこの文書に足す。
