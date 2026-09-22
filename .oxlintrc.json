@@ -1,0 +1,529 @@
+{
+  "$schema": "./node_modules/oxlint/configuration_schema.json",
+  "plugins": ["typescript", "react", "import", "jsx-a11y", "unicorn", "oxc", "node", "vitest"],
+  // 組み込みルールで表せない禁止事項（生の Date / enum / delete / export *）。
+  // 実装は tools/oxlint-plugin.mjs。JS プラグインは Oxlint では alpha 扱い。
+  "jsPlugins": ["./tools/oxlint-plugin.mjs"],
+  "options": {
+    // 型情報を使うルール（await 漏れなど実行時バグを静的に潰す）。
+    // tsgolint (oxlint-tsgolint) が受け持つ。
+    "typeAware": true
+  },
+  "env": { "browser": true, "node": true, "es2022": true },
+  "ignorePatterns": ["**/dist/**", "**/coverage/**", "**/storybook-static/**", "src-tauri/**"],
+  "rules": {
+    // ---------------------------------------------------------------
+    // correctness
+    // ---------------------------------------------------------------
+    "no-unused-vars": [
+      "error",
+      { "args": "all", "argsIgnorePattern": "^_", "varsIgnorePattern": "^_" }
+    ],
+    "react/rules-of-hooks": "error",
+    "react/exhaustive-deps": "error",
+    // コンポーネント定義の入れ子は再マウントで state が消える
+    "react/no-unstable-nested-components": "error",
+    // props は不変。React Compiler では書き換えがハードエラーになる
+    "react/immutability": "error",
+
+    // ---------------------------------------------------------------
+    // 型情報を使うルール群。
+    // ---------------------------------------------------------------
+    "typescript/no-floating-promises": "error",
+    "typescript/no-misused-promises": "error",
+    "typescript/await-thenable": "error",
+    "typescript/no-base-to-string": "error",
+    "typescript/switch-exhaustiveness-check": "error",
+    "typescript/prefer-nullish-coalescing": "error",
+    // @deprecated 注釈の付いた API の利用を止める。
+    // React やライブラリ側が非推奨にした API を、こちらで列挙せずに拾える。
+    "typescript/no-deprecated": "error",
+    // throw / catch は Error に限定し、原因は cause で連鎖させる
+    "typescript/only-throw-error": "error",
+    "preserve-caught-error": "error",
+
+    // ---------------------------------------------------------------
+    // suspicious
+    // ---------------------------------------------------------------
+    "typescript/no-explicit-any": "error",
+    // 循環参照は初期化順の事故になる。実行時まで気づけないので静的に止める
+    "import/no-cycle": "error",
+    "no-shadow": "error",
+    // 型エラーは握り潰さず @ts-expect-error で理由を残させる
+    "typescript/ban-ts-comment": [
+      "error",
+      { "ts-ignore": true, "ts-expect-error": "allow-with-description" }
+    ],
+    "require-await": "error",
+    "no-empty": "error",
+    "no-console": ["error", { "allow": ["error", "warn"] }],
+    // 以下は Biome の preset: recommended に含まれていたもの。Oxlint では
+    // pedantic / perf / restriction に分類されており既定で無効なため、明示する。
+    // 型の異なる値の比較は意図しない変換を起こす（null との比較だけは許す）
+    "eqeqeq": ["error", "always", { "null": "ignore" }],
+    "no-self-compare": "error",
+    // 配列の添字を key にすると、並べ替え・挿入で state が別の行に付く
+    "react/no-array-index-key": "error",
+    // 生の HTML 挿入は XSS の入口。メモの Markdown はユーザーのファイルそのもの
+    "react/no-danger": "error",
+    // no-empty は空のブロックだけを見る。Biome の noEmptyBlockStatements は
+    // 空の関数本体も落としていたので、こちらで補う
+    "no-empty-function": "error",
+
+    // ---------------------------------------------------------------
+    // style
+    // ---------------------------------------------------------------
+    "typescript/no-non-null-assertion": "error",
+    "prefer-const": "error",
+    "typescript/consistent-type-imports": "error",
+    "typescript/consistent-type-exports": "error",
+    "node/no-process-env": "error",
+    "import/no-default-export": "error",
+    "no-nested-ternary": "error",
+    "curly": ["error", "all"],
+    // if の入れ子は && で 1 つにまとめられる
+    "unicorn/no-lonely-if": "error",
+    "typescript/array-type": "error",
+    "typescript/consistent-type-definitions": "error",
+    // bulletproof-react に倣い、コンポーネントも含めて kebab-case に統一する。
+    // ディレクトリ名はこのルールでは見られないので、docs とレビューで担保する。
+    "unicorn/filename-case": ["error", { "case": "kebabCase" }],
+    // クラスコンポーネントは使わない。エラーバウンダリ（componentDidCatch）だけは
+    // フックの代替がないため例外。
+    "react/prefer-function-component": "error",
+    // <></> に統一する。React.Fragment を書く必要があるのは key を渡すときだけ
+    "react/jsx-fragments": ["error", "syntax"],
+    // 文字列 ref はレガシー機能。ref は useRef かコールバック ref で受ける
+    "react/no-string-refs": "error",
+    // React 19 の型に今も残っている、避けたい型だけを挙げる。
+    // VFC / SFC / StatelessComponent は型ごと消えたので tsc 側の担当。
+    "typescript/no-restricted-types": [
+      "error",
+      {
+        "types": {
+          "FC": {
+            "message": "FC は使えません。戻り値の型が固定され、children を暗黙に持つ版と混同されやすいためです。props の型は引数に直接書いてください（function Card(props: CardProps)）。"
+          },
+          "FunctionComponent": {
+            "message": "FunctionComponent は使えません。props の型は引数に直接書いてください（function Card(props: CardProps)）。"
+          },
+          "PropsWithChildren": {
+            "message": "children を暗黙に足すことはできません。children を取るコンポーネントの props に children: ReactNode と明示してください。"
+          }
+        }
+      }
+    ],
+    "no-restricted-imports": [
+      "error",
+      {
+        "paths": [
+          {
+            // React 全体の取り込み（"*" が名前空間 import、"default" がデフォルト import）と、
+            // 型としては現役でもクラス時代の API を塞ぐ。削除済みの API は tsc の担当。
+            // Component だけは残す: エラーバウンダリにはフックの代替がない。
+            // forwardRef は React 19 で ref が通常の props になったので不要。
+            "name": "react",
+            "importNames": [
+              "*",
+              "default",
+              "Children",
+              "cloneElement",
+              "createRef",
+              "PureComponent",
+              "forwardRef"
+            ],
+            "message": "React をまるごと取り込むこと（import React from 'react' / import * as React from 'react'）はできません。JSX の変換に React の import は不要で、React.forwardRef のような旧 API への入口にもなるためです。必要な API は named import で個別に取り込んでください（import type { ComponentProps, ReactNode } from 'react'）。Children / cloneElement は children の構造に依存するので context か render prop に置き換え、ref は props で受け（forwardRef は不要）、再レンダーの抑制は React Compiler に任せてください。"
+          },
+          {
+            // useFormState は React 19 で useActionState に置き換わったが、
+            // @types/react-dom に @deprecated 注釈が無く tsc も no-deprecated も
+            // 拾えないため、ここで名指しで止める。
+            "name": "react-dom",
+            "importNames": ["*", "default", "useFormState"],
+            "message": "react-dom をまるごと取り込むこと（import * as ReactDOM）はできません。必要な API は named import で取り込んでください。useFormState は React 19 で useActionState（react から import）に置き換わっています。"
+          }
+        ]
+      }
+    ],
+
+    // ---------------------------------------------------------------
+    // 自作ルール（tools/oxlint-plugin.mjs）
+    // ---------------------------------------------------------------
+    // 自前モジュールは flat named import で統一する。外部ライブラリは対象外
+    // （cmdk の `import * as` などは通る）。動的 import() も名前空間の取り込みとして
+    // 拾う。分けること自体が目的の箇所だけ、抑制コメントに理由を添えて残してある。
+    //
+    // no-restricted-imports の importNamePattern で書かないのは、Oxlint がそれを
+    // 副作用 import（import './x.css'）にまで効かせてしまうため。
+    "treemo/no-namespace-import": "error",
+    "treemo/no-enum": "error",
+    // 日付を組み立てる入口は src/lib/date.ts の 1 つだけ。除外は overrides で。
+    "treemo/no-raw-date": "error",
+    // performance: 再エクスポート専用ファイル（index.ts の barrel）はバンドラの
+    // tree-shaking を妨げ、import の循環も作りやすい。
+    "oxc/no-barrel-file": "error",
+    "treemo/no-re-export-all": "error",
+    "treemo/no-delete": "error",
+
+    // ---------------------------------------------------------------
+    // a11y
+    // ---------------------------------------------------------------
+    "jsx-a11y/aria-role": ["error", { "ignoreNonDOM": true }],
+
+    // ---------------------------------------------------------------
+    // Biome 時代には無かったルールのうち、プラグインの既定で warn になるもの。
+    // 移行では挙動を変えない方針なので off にしてある。導入するなら別途、指摘を
+    // 直してから "error" にする。
+    // ---------------------------------------------------------------
+    // role="caption" を div に付けている箇所が多数ある（table 以外の見出し用）
+    "jsx-a11y/prefer-tag-over-role": "off",
+    // effect 内の同期 setState。外部システムとの同期だけが正当な用途なので、
+    // 例外は行単位の disable コメントで名指しする。
+    "react/set-state-in-effect": "error",
+    "vitest/require-mock-type-parameters": "off"
+  },
+  "overrides": [
+    {
+      // 設定ファイルは default export とホスト環境の API が前提。
+      // 名前もフレームワークが固定しているのでファイル名規約から外す。
+      "files": [
+        "**/*.config.ts",
+        "**/*.config.js",
+        "**/*.config.mjs",
+        "**/*.config.mts",
+        "**/*.d.ts",
+        "**/.storybook/**",
+        "tools/**"
+      ],
+      "rules": {
+        "import/no-default-export": "off",
+        "node/no-process-env": "off",
+        "unicorn/filename-case": "off"
+      }
+    },
+    {
+      // src は WebView で動く。ファイルシステムや OS に触る処理は Node ではなく
+      // src-tauri の Rust コマンドに置き、@tauri-apps/api の invoke で呼ぶ。
+      "files": ["src/**"],
+      "rules": {
+        "import/no-nodejs-modules": "error"
+      }
+    },
+    {
+      // 日付を組み立てる唯一の場所と、時刻を固定するために Date を直接使うテスト
+      "files": ["**/lib/date.ts", "**/*.test.ts", "**/*.test.tsx"],
+      "rules": {
+        "treemo/no-raw-date": "off"
+      }
+    },
+    // ---------------------------------------------------------------
+    // レイヤー境界。依存は 共有層 -> features -> app / layoutsの一方向に限る。
+    //
+    // layouts は置き場所こそ components/layouts だが、features を組み立てる側なので
+    // 層としては app と同じ高さにある。共有層の override より後で上書きしている。
+    //
+    // overrides の rules オプションはグローバル設定を「マージではなく上書き」する。
+    // そのため各 override で react / react-dom の paths を再掲している。
+    // 消すとその配下だけ React まるごと取り込みが素通りになるので注意。
+    // ---------------------------------------------------------------
+    {
+      // 共有層は上位レイヤー（features / app / layouts）を知らない。
+      // 再エクスポートを経由した迂回もここで断つ。
+      "files": [
+        "src/components/**",
+        "src/config/**",
+        "src/lib/**",
+        "src/hooks/**",
+        "src/stores/**"
+      ],
+      "rules": {
+        "no-restricted-imports": [
+          "error",
+          {
+            "paths": [
+              {
+                "name": "react",
+                "importNames": [
+                  "*",
+                  "default",
+                  "Children",
+                  "cloneElement",
+                  "createRef",
+                  "PureComponent",
+                  "forwardRef"
+                ],
+                "message": "React をまるごと取り込むこと（import React from 'react' / import * as React from 'react'）はできません。必要な API は named import で個別に取り込んでください（import type { ComponentProps, ReactNode } from 'react'）。"
+              },
+              {
+                "name": "react-dom",
+                "importNames": ["*", "default", "useFormState"],
+                "message": "react-dom をまるごと取り込むことはできません。必要な API は named import で取り込んでください。useFormState は React 19 で useActionState（react から import）に置き換わっています。"
+              }
+            ],
+            "patterns": [
+              {
+                "group": ["@/features/**", "@/app/**", "@/components/layouts/**"],
+                "message": "共有層から features / app / layouts を import することはできません。依存の向きは 共有層 → features → app の一方向です。共有したい実装は共有層に移すか、app 側で合成してください。"
+              },
+              {
+                // 親を遡る相対 import を塞がないと、@/ エイリアスに対する上の判定を
+                // 相対パス表記ですり抜けられる。共有層に親を遡る用事はない。
+                "group": ["../**"],
+                "message": "共有層では親ディレクトリをさかのぼる相対 import を使えません。この記法で上位レイヤーへの依存チェックをすり抜けられるためです。同じ階層以下は ./、それ以外は @/ エイリアスで参照してください。"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      // ---------------------------------------------------------------
+      // layouts 層。画面の外枠（サイドバー・ステータスバー・grid）。
+      //
+      // ディレクトリは components 配下にあるが、共有層ではない。features を呼んで
+      // 画面の骨格を組み立てるのが仕事で、層としては app と同じ高さに立つ。
+      // そのため共有層で禁じている @/features/** への依存だけを開けてある。
+      // app には依存しない。向きが逆になるため。
+      //
+      // 共有層の override（components/** を含む）より後に置くこと。overrides の
+      // 設定はマージではなく上書きなので、共有層で禁じている分も再掲している。
+      // ---------------------------------------------------------------
+      "files": ["src/components/layouts/**"],
+      "rules": {
+        "no-restricted-imports": [
+          "error",
+          {
+            "paths": [
+              {
+                "name": "react",
+                "importNames": [
+                  "*",
+                  "default",
+                  "Children",
+                  "cloneElement",
+                  "createRef",
+                  "PureComponent",
+                  "forwardRef"
+                ],
+                "message": "React をまるごと取り込むこと（import React from 'react' / import * as React from 'react'）はできません。必要な API は named import で個別に取り込んでください（import type { ComponentProps, ReactNode } from 'react'）。"
+              },
+              {
+                "name": "react-dom",
+                "importNames": ["*", "default", "useFormState"],
+                "message": "react-dom をまるごと取り込むことはできません。必要な API は named import で取り込んでください。useFormState は React 19 で useActionState（react から import）に置き換わっています。"
+              }
+            ],
+            "patterns": [
+              {
+                "group": ["@/app/**"],
+                "message": "layouts から app を import することはできません。外枠が app を知ると依存が逆流します。app 固有の値は props で受け取ってください。"
+              },
+              {
+                // 親を遡る相対 import を塞がないと、@/ エイリアスに対する上の判定を
+                // 相対パス表記ですり抜けられる。layouts に親を遡る用事はない。
+                "group": ["../**"],
+                "message": "layouts では親ディレクトリをさかのぼる相対 import を使えません。この記法で依存チェックをすり抜けられるためです。同じ階層以下は ./、それ以外は @/ エイリアスで参照してください。"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      // features は他 feature と app / layouts を知らない。自 feature 内は相対 import で書く。
+      // feature 直下（<domain>/ 自身）に置くファイルの規定。api / components / utils などの
+      // サブディレクトリは、1 階層だけ上がれるよう次の override で上書きする。
+      "files": ["src/features/**"],
+      "rules": {
+        "no-restricted-imports": [
+          "error",
+          {
+            "paths": [
+              {
+                "name": "react",
+                "importNames": [
+                  "*",
+                  "default",
+                  "Children",
+                  "cloneElement",
+                  "createRef",
+                  "PureComponent",
+                  "forwardRef"
+                ],
+                "message": "React をまるごと取り込むこと（import React from 'react' / import * as React from 'react'）はできません。必要な API は named import で個別に取り込んでください（import type { ComponentProps, ReactNode } from 'react'）。"
+              },
+              {
+                "name": "react-dom",
+                "importNames": ["*", "default", "useFormState"],
+                "message": "react-dom をまるごと取り込むことはできません。必要な API は named import で取り込んでください。useFormState は React 19 で useActionState（react から import）に置き換わっています。"
+              }
+            ],
+            "patterns": [
+              {
+                "group": ["@/features/**"],
+                "message": "他の feature を直接 import することはできません。共有したい実装は @/lib などの共有層へ引き上げるか、app で両方を呼んで合成してください。自 feature 内の参照は相対パスで書きます。"
+              },
+              {
+                "group": ["@/app/**", "@/components/layouts/**"],
+                "message": "features から app / layouts を import することはできません。app に依存せず、必要な値は props で受け取ってください。合成は app 側で行います。"
+              },
+              {
+                // feature 直下のファイルから 1 階層さかのぼると `../other-feature` が届く。
+                "group": ["../**"],
+                "message": "親ディレクトリをさかのぼる相対 import は feature の境界を越えるため使えません。自 feature 内の参照は ./ で、共有層は @/ エイリアスで参照してください。"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      // ---------------------------------------------------------------
+      // feature の中の階層（api / components / hooks / stores / types / utils）。
+      //
+      // 上の features の override をそのまま受けると ../ が一切書けず、components から
+      // utils を引けない。ここだけ「1 階層上がる」を開ける。
+      // src/features/<domain>/<dir>/ から見た ../ は必ず自分の feature の中なので、
+      // 境界を越えるのは ../../ からになる。そこを禁じれば向きは保たれる。
+      //
+      // features の override より後に置くこと。overrides の設定はマージではなく
+      // 上書きなので、あちらで禁じている分もすべて再掲している。
+      // ---------------------------------------------------------------
+      "files": ["src/features/*/*/**"],
+      "rules": {
+        "no-restricted-imports": [
+          "error",
+          {
+            "paths": [
+              {
+                "name": "react",
+                "importNames": [
+                  "*",
+                  "default",
+                  "Children",
+                  "cloneElement",
+                  "createRef",
+                  "PureComponent",
+                  "forwardRef"
+                ],
+                "message": "React をまるごと取り込むこと（import React from 'react' / import * as React from 'react'）はできません。必要な API は named import で個別に取り込んでください（import type { ComponentProps, ReactNode } from 'react'）。"
+              },
+              {
+                "name": "react-dom",
+                "importNames": ["*", "default", "useFormState"],
+                "message": "react-dom をまるごと取り込むことはできません。必要な API は named import で取り込んでください。useFormState は React 19 で useActionState（react から import）に置き換わっています。"
+              }
+            ],
+            "patterns": [
+              {
+                "group": ["@/features/**"],
+                "message": "他の feature を直接 import することはできません。共有したい実装は @/lib などの共有層へ引き上げるか、app で両方を呼んで合成してください。自 feature 内の参照は相対パスで書きます。"
+              },
+              {
+                "group": ["@/app/**", "@/components/layouts/**"],
+                "message": "features から app / layouts を import することはできません。app に依存せず、必要な値は props で受け取ってください。合成は app 側で行います。"
+              },
+              {
+                "group": ["../../**"],
+                "message": "2 階層以上さかのぼる相対 import は feature の境界を越えるため使えません。同じ feature の別ディレクトリは ../<dir>/ まで、共有層は @/ エイリアスで参照してください。"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      // ---------------------------------------------------------------
+      // UI プリミティブ層（compound pattern）。
+      //
+      // 見た目と構造だけを持つ最下層。ドメイン・データ取得・ルーティングを知らず、
+      // 状態は props か render prop で外から受け取る。この制約があるからこそ
+      // Button などを画面をまたいで使い回せる。
+      //
+      // サブコンポーネントは Card.Header ではなく CardHeader のフラットな named export
+      // で公開する。knip が未使用 export を追跡でき、no-barrel-file とも衝突しないため。
+      //
+      // components 配下には ui のほかに layouts があり、layouts は上の override で
+      // 別扱いにしている。ドメインを知らない部品が今後増えても（seo / errors など）
+      // 共有層の override が効くよう、files は両方を残している。
+      // 共有層の override（components/** を含む）より後に置くこと。overrides の
+      // 設定はマージではなく上書きなので、共有層で禁じている分もすべて再掲している。
+      // ---------------------------------------------------------------
+      "files": ["src/components/ui/**"],
+      "rules": {
+        "no-restricted-imports": [
+          "error",
+          {
+            "paths": [
+              {
+                "name": "react",
+                "importNames": [
+                  "*",
+                  "default",
+                  "Children",
+                  "cloneElement",
+                  "createRef",
+                  "PureComponent",
+                  "forwardRef"
+                ],
+                "message": "React をまるごと取り込むこと（import React from 'react' / import * as React from 'react'）はできません。必要な API は named import で個別に取り込んでください（import type { ComponentProps, ReactNode } from 'react'）。"
+              },
+              {
+                "name": "react-dom",
+                "importNames": ["*", "default", "useFormState"],
+                "message": "react-dom をまるごと取り込むことはできません。必要な API は named import で取り込んでください。useFormState は React 19 で useActionState（react から import）に置き換わっています。"
+              }
+            ],
+            "patterns": [
+              {
+                "group": ["@/features/**", "@/app/**", "@/components/layouts/**", "@/stores/**"],
+                "message": "ui にドメイン・データ取得・グローバルステートを持ち込むことはできません。ui は props と render prop だけで動く最下層です。状態は呼び出し側が持ってください。"
+              },
+              {
+                "group": ["@/components/**"],
+                "message": "ui は最下層なので、components 配下の他のディレクトリには依存できません。ui どうしの参照は ./ の相対 import で書いてください。"
+              },
+              {
+                // 親を遡る相対 import を塞がないと、上の判定を相対パス表記ですり抜けられる。
+                "group": ["../**"],
+                "message": "ui では親ディレクトリをさかのぼる相対 import を使えません。この記法で依存チェックをすり抜けられるためです。参照は同じ階層以下（./）に限ります。"
+              }
+            ]
+          }
+        ],
+        // 1 ファイル = 1 つの compound 群に保つ。ヘルパーや定数を混ぜたくなったら、
+        // それは ui の外（lib）に居場所があるという合図。
+        // Fast Refresh が効き続けることも同時に担保できる。
+        "react/only-export-components": "error"
+      }
+    },
+    {
+      // Storybook。設定もストーリーも default export がフレームワークの API なので、
+      // ここだけ no-default-export を外す。
+      //
+      // ストーリーは components/ui 配下にも置くため、その override より後に来る必要がある。
+      // only-export-components は meta / Story オブジェクトの export を弾くので併せて外す。
+      // 依存の向き（no-restricted-imports）は ui の override のまま効かせる。
+      "files": ["**/.storybook/**", "**/*.stories.tsx"],
+      "rules": {
+        "import/no-default-export": "off",
+        "react/only-export-components": "off",
+        // render 関数の中でフックを呼ぶのが Storybook の書き方（名前が Anonymous になる）
+        "react/rules-of-hooks": "off",
+        // role の見本を並べるストーリーがある
+        "jsx-a11y/role-has-required-aria-props": "off"
+      }
+    },
+    {
+      // テストは非 null 断言・console の利用を許す
+      "files": ["**/*.test.ts", "**/*.test.tsx"],
+      "rules": {
+        "typescript/no-non-null-assertion": "off",
+        "no-console": "off",
+        // jsdom / happy-dom の未実装 API を no-op でスタブすることがある
+        "no-empty": "off",
+        "no-empty-function": "off"
+      }
+    }
+  ]
+}

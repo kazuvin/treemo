@@ -1,0 +1,8 @@
+{
+  "$schema": "https://unpkg.com/knip@6/schema.json",
+  "project": ["src/**/*.{ts,tsx}"],
+  "ignoreDependencies": [
+    // globals.css の `@import "tailwindcss"` から使う。knip は CSS の import を辿らない
+    "tailwindcss"
+  ]
+}

@@ -1,0 +1,10 @@
+node_modules
+dist
+coverage
+storybook-static
+*.tsbuildinfo
+.DS_Store
+*.log
+
+# Claude Code のローカル設定（マシンごとの許可設定なので共有しない）
+.claude/settings.local.json

@@ -1,0 +1,354 @@
+@import "tailwindcss";
+
+/* ---------------------------------------------------------------------------
+ * Kotoba Design System — トークン層
+ *
+ * claude.ai/design のプロジェクト "Kotoba Design System" から取り込んだもの。
+ * ルール・根拠・4 つのトークン表は docs/kotoba-design-system.md にある。
+ *
+ * 次の 3 つは事故で壊しやすく、壊すとデザインシステムとして成立しなくなる。
+ *   1. プライマリアクションの面は黒 (--color-gray-900)。アクセントではない。
+ *   2. アクセント (rgb 242 49 130 — ロゴのピンク) はフォーカスリングと選択状態に
+ *      のみ使う。塗り・ステータス・装飾には一切使わない。
+ *   3. 文字は 0.875rem (14px) を超えない。見出しも本文もこの 1 サイズで、階層は
+ *      太さ・色・余白で作る。上に伸びる段は持たない — text-lg などは意図して
+ *      未定義にしてある。
+ * ------------------------------------------------------------------------- */
+
+@theme {
+  /** 余白の基本単位。出荷される余白の値はすべて 4 × n */
+  --spacing: 4px;
+
+  /** Font — 本文も見出しもコードも等幅で通す。欧文は Noto Sans Mono、和文は
+      Noto Sans JP。どちらも @fontsource-variable/* を src/main.tsx で読み込んで
+      self-host する (Fontsource の可変フォントは "… Variable" という別名で登録される)。
+      sans と mono が同じ値を指すのは意図的。役割としての 2 つは残しつつ、
+      実体を 1 つの等幅書体に寄せている。 */
+  --font-sans: "Noto Sans Mono Variable", "Noto Sans JP Variable", ui-monospace, monospace;
+  --font-mono: "Noto Sans Mono Variable", "Noto Sans JP Variable", ui-monospace, monospace;
+
+  /** ---- ニュートラルランプ ----
+      アクセント以外のすべての色 — 面も境界もテキストも、そしてプライマリ
+      アクションの塗りもここが担う。Tailwind 既定の gray を先に消してあるので、
+      梯子に無いシステム外の灰色が紛れ込むことはない。 */
+  --color-gray-*: initial;
+  --color-gray-0: #ffffff;
+  --color-gray-25: #fafafb;
+  --color-gray-50: #f4f4f6;
+  --color-gray-100: #ebebee;
+  --color-gray-200: #dedee3;
+  --color-gray-300: #c3c3cb;
+  --color-gray-400: #9a9aa3;
+  --color-gray-500: #74747c;
+  --color-gray-600: #56565e;
+  --color-gray-800: #2c2c31;
+  --color-gray-900: #16161a;
+
+  /** ---- 唯一の有彩色 ----
+      4 段だけ。使ってよいのはフォーカスリングと選択状態の 2 箇所のみ。
+      基準は kazuvin.me のロゴのピンクそのもの (#f23182)。600 / 700 / tint は
+      同じ色相のまま、明度と彩度だけを動かした段で、白地に対する 3:1 (非文字の
+      コントラスト下限) は基準の 3.79 で満たしている。 */
+  --color-accent: rgb(242, 49, 130);
+  --color-accent-600: #cb2a6e;
+  --color-accent-700: #9b2356;
+  --color-accent-tint: #feeff5;
+
+  /** ---- セマンティック: 面 ---- */
+  --color-background: var(--color-gray-0);
+  --color-foreground: var(--color-gray-900);
+  --color-card: var(--color-gray-0);
+  --color-card-foreground: var(--color-gray-900);
+  --color-popover: var(--color-gray-0);
+  --color-popover-foreground: var(--color-gray-900);
+  --color-inverse: var(--color-gray-900);
+  --color-inverse-foreground: var(--color-gray-0);
+
+  /** ---- セマンティック: 静かな面と二次テキスト ----
+      --color-muted はこのシステムで唯一のティント。 */
+  --color-muted: var(--color-gray-50);
+  --color-muted-foreground: var(--color-gray-500);
+  --color-subtle: var(--color-gray-50);
+  --color-subtle-foreground: var(--color-gray-600);
+  --color-secondary: var(--color-gray-50);
+  --color-secondary-foreground: var(--color-gray-900);
+
+  /** ---- セマンティック: プライマリアクション — 有彩色ではなく黒 ---- */
+  --color-primary: var(--color-gray-900);
+  --color-primary-foreground: var(--color-gray-0);
+  --color-primary-pressed: var(--color-gray-800);
+
+  /** ---- セマンティック: 破壊的操作 ----
+      このシステムに色分けされたステータスは無い。失敗状態は色相ではなく
+      「言葉と位置」で表す。既存の `bg-destructive` が解決できるようキーは
+      残してあるが、描かれるのはプライマリの黒。 */
+  --color-destructive: var(--color-gray-900);
+  --color-destructive-foreground: var(--color-gray-0);
+
+  /** ---- セマンティック: 境界 ----
+      エレベーションは存在しない。分離は 1px のヘアラインか余白で行う。 */
+  --color-border: var(--color-gray-200);
+  --color-border-hairline: var(--color-gray-100);
+  --color-border-strong: var(--color-gray-300);
+  --color-input: var(--color-gray-300);
+
+  /** ---- セマンティック: フォーカスと選択 — アクセントを使う唯一の場所 ---- */
+  --color-ring: var(--color-accent);
+  --color-selected: var(--color-accent-tint);
+  --color-selected-border: var(--color-accent);
+
+  /** ---- セマンティック: 無効状態 ---- */
+  --color-disabled: var(--color-gray-100);
+  --color-disabled-foreground: var(--color-gray-400);
+
+  /** ---- タイポグラフィ ----
+      rem の基準 (html) は 16px のまま触らない。html を 87.5% に振って
+      「1rem = 14px」にする手もあるが、Radix / Shiki / Fontsource など
+      こちらが書いていない rem までまとめて動くうえ、ユーザーのブラウザ
+      既定サイズと二重にかかるので採らない。1rem = 16px を基準に、
+      スケールは rem で相対的に定義する。px 直書きと違って、ユーザーが
+      ブラウザの既定文字サイズを上げれば全段が比例して伸びる。
+
+      **基準にして上限が 0.875rem (14px)。** 見出しも本文も同じ 14px で組み、
+      階層は「太さ・色・余白」だけで作る。サイズを上に伸ばして段を作らない。
+      これは Linear や Vercel のダッシュボードが 13〜14px の 1 サイズに
+      ほぼ全部を寄せているのと同じ考え方で、等幅 1 書体で通しているこの
+      サイトとは特に相性がいい (サイズを変えても字面の濃度が変わらない
+      等幅では、大きさより太さのほうが段として読みやすい)。
+
+      梯子は 11 / 12 / 13 / 14 の 4 段だけ。上に伸びる段は持たない。
+      Tailwind 既定のスケールは --text-*: initial で消してあるので、
+      text-lg や text-2xl は書いても効かない (色ランプと同じ方針)。
+      キー名は Tailwind 既定と同じにしてあるので、既存の text-sm /
+      text-xs はそのままこのスケールに乗り換わる。
+
+      line-height は 4px グリッドに着地する rem。letter-spacing は em で、
+      小さい段ほど開く (等幅の 11〜12px は詰まると潰れる)。
+      font-weight はサイズに束ねない。このシステムでは太さが階層そのもの
+      なので、text-* と font-* は必ず直交させる。 */
+
+  /** 行間。段ごとの既定は各 --text-*--line-height にあり、これは長文などで
+      明示的に上書きするための語彙。relaxed が和文の長文用。 */
+  --leading-none: 1;
+  --leading-tight: 1.25;
+  --leading-snug: 1.4;
+  --leading-normal: 1.5;
+  --leading-relaxed: 1.75;
+  --leading-loose: 2;
+
+  /** 字間。widest だけは大文字組み (overline) 専用。 */
+  --tracking-tighter: -0.025em;
+  --tracking-tight: -0.015em;
+  --tracking-normal: 0em;
+  --tracking-wide: 0.02em;
+  --tracking-wider: 0.04em;
+  --tracking-widest: 0.1em;
+
+  /** 太さは 4 段だけ。書体は可変 (100-900) だが、システムとして出荷するのは
+      この 4 つ。既定を消してあるので font-light / font-black は効かない。
+      サイズが 1 つに寄っているぶん、階層はここが担う。 */
+  --font-weight-*: initial;
+  --font-weight-normal: 400;
+  --font-weight-medium: 500;
+  --font-weight-semibold: 600;
+  --font-weight-bold: 700;
+
+  /** サイズスケール 4 段。コメントの px はルート 16px 時の実寸。
+      base が基準であり上限で、この上に段は無い。 */
+  --text-*: initial;
+
+  --text-2xs: 0.6875rem; /* 11 / 16 */
+  --text-2xs--line-height: 1rem;
+  --text-2xs--letter-spacing: var(--tracking-wider);
+
+  --text-xs: 0.75rem; /* 12 / 16 */
+  --text-xs--line-height: 1rem;
+  --text-xs--letter-spacing: var(--tracking-wide);
+
+  --text-sm: 0.8125rem; /* 13 / 20 */
+  --text-sm--line-height: 1.25rem;
+  --text-sm--letter-spacing: var(--tracking-normal);
+
+  /** 基準サイズ。本文も見出しもここに乗る。スケールの上限でもある。 */
+  --text-base: 0.875rem; /* 14 / 20 */
+  --text-base--line-height: 1.25rem;
+  --text-base--letter-spacing: var(--tracking-normal);
+
+  /** 文字組みの外側。絵文字や数字を「文字」ではなく「絵」として置く 1 箇所
+      だけのための逃がし口で、テキストの段ではない (だから 2xs…base の梯子に
+      連なる名前を付けていない)。現状の使用箇所はトップの ☕️ と 404 の数字の
+      2 つだけ。コピーには使わない。 */
+  --text-mark: 2rem; /* 32 */
+  --text-mark--line-height: var(--leading-none);
+  --text-mark--letter-spacing: var(--tracking-tighter);
+
+  /** ---- 余白の tier ----
+      tier 1 は Screen の専有、tier 2 は兄弟要素のあいだ、tier 3 はコンポーネントの
+      内側にあり margin として外に漏れない。
+
+      tier 1 は 1 本の梯子ではなく軸ごとに読む。左右 (24) がブロック間 (32) より
+      小さいのは、読み幅がもともと狭く、ガターを広げたぶんがそのまま行長から
+      引かれるため。上下 (56 / 48) がブロック間より大きいのは、ヘッダーを持たない
+      このサイトではページの上端が兄弟要素ではなくブラウザの UI と接するから。
+
+      tier 3 だけは軸によらない 1 つの規則で、要素の内側は 20 を超えない。
+
+      **`inline-block` というクラスは書かない。** Tailwind はこの名前空間から
+      `inline-size` 用の `inline-<余白キー>` ユーティリティを作るので、
+      `--spacing-block` が存在した時点で `inline-block` は
+      `display: inline-block` と `inline-size: 32px` の両方を吐く。しかも
+      `inline-size` は同じ要素の `w-*` に勝つため、箱が黙って 32px 幅に潰れて
+      ラベルがはみ出す。中身の幅に縮む inline の箱には `inline-flex` を使う。
+      `block` 単体は安全 (`block-*` = block-size のユーティリティは無い)。 */
+  --spacing-edge-h: 24px;
+  --spacing-edge-top: 56px;
+  --spacing-edge-bottom: 48px;
+  --spacing-block: 32px;
+  --spacing-block-loose: 48px;
+  --spacing-block-tight: 20px;
+  --spacing-inset-x: 20px;
+  --spacing-inset-y: 12px;
+  --spacing-gap: 8px;
+  --spacing-gap-tight: 4px;
+
+  /** ---- タップ形状 ----
+      視覚的な箱とタップ領域は別のトークン。ラベルのサイズを変えても箱は動かない。 */
+  --spacing-tap-min: 44px;
+  --spacing-control: 40px;
+  --spacing-control-lg: 52px;
+  --spacing-hitslop: 2px;
+
+  /** ---- アイコン ----
+      グリフの一辺。13px を px ではなく rem で持つのは、ブラウザの既定文字サイズを
+      上げたときにテキストだけが伸びてグリフが取り残されないようにするため
+      (隣に並ぶ text-sm と同じ 0.8125rem)。余白ではないが、Tailwind の size-* が
+      読むのは spacing の名前空間なのでここに置く。 */
+  --spacing-icon: 0.8125rem;
+
+  /** ---- 角丸 ----
+      コントロールは 12、カードは 16、フォーカスリングは 14 (コントロール + オフセット
+      2px)、ピルは 999。これ以外の値は使わない。 */
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-control: 12px;
+  --radius-card: 16px;
+  --radius-focus: 14px;
+  --radius-chip: 999px;
+
+  /** ---- モーション ----
+      120ms、color と opacity のみ。バウンスもスプリングも無く、中身を拡大縮小
+      させることもしない。 */
+  --ease-standard: cubic-bezier(0.2, 0, 0.2, 1);
+
+  /** アニメーション */
+  --animate-fade-in: 0.2s ease fade-in;
+  --animate-fade-out: 0.2s ease fade-out;
+  --animate-scale-in: 0.2s ease scale-in;
+  --animate-scale-out: 0.2s ease scale-out;
+  --animate-slide-up: 0.5s ease slide-up;
+  --animate-slide-left: 0.3s ease slide-left;
+  --animate-fade-scale-in: var(--animate-fade-in), var(--animate-scale-in);
+  --animate-fade-scale-out: var(--animate-fade-out), var(--animate-scale-out);
+  --animate-fade-slide-up: var(--animate-fade-in), var(--animate-slide-up);
+  --animate-fade-slide-left: var(--animate-fade-in), var(--animate-slide-left);
+
+  /** キーフレーム */
+  @keyframes fade-in {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+
+  @keyframes fade-out {
+    from {
+      opacity: 1;
+    }
+    to {
+      opacity: 0;
+    }
+  }
+
+  @keyframes scale-in {
+    from {
+      transform: scale(0.95);
+    }
+    to {
+      transform: scale(1);
+    }
+  }
+
+  @keyframes scale-out {
+    from {
+      transform: scale(1);
+    }
+    to {
+      transform: scale(0.95);
+    }
+  }
+
+  @keyframes slide-up {
+    from {
+      transform: translateY(20px);
+    }
+    to {
+      transform: translateY(0);
+    }
+  }
+
+  @keyframes slide-down {
+    from {
+      transform: translateY(-20px);
+    }
+    to {
+      transform: translateY(0);
+    }
+  }
+
+  @keyframes slide-left {
+    from {
+      transform: translateX(20px);
+    }
+    to {
+      transform: translateX(0);
+    }
+  }
+}
+
+@layer utilities {
+  .animation-delay-200 {
+    animation-delay: 200ms;
+  }
+
+  .animation-delay-400 {
+    animation-delay: 400ms;
+  }
+
+  .animation-delay-600 {
+    animation-delay: 600ms;
+  }
+
+  .animation-forwards {
+    animation-fill-mode: forwards;
+  }
+}
+
+/* body には font-size を敷かない。ここは rem の基準を 16px に保つ層で、
+   実際に描かれるテキストのサイズはアプリの外枠が text-base = 0.875rem として与える。
+   基準を 16px に置いたまま中身を 14px で組むので、rem の値がそのまま px の 1/16 として読める。 */
+body {
+  @apply bg-background font-sans text-foreground;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+/* フォーカスリングはアクセントを使ってよい 2 箇所のうちの 1 つ。2px オフセットの
+   2px で描くので、--radius-focus は --radius-control + 2 になっている。 */
+:where(button, a, [tabindex]):focus-visible {
+  outline: 2px solid var(--color-ring);
+  outline-offset: 2px;
+  border-radius: var(--radius-focus);
+}
