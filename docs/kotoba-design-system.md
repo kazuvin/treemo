@@ -402,7 +402,7 @@ kazuvin.me（Next.js）に取り込んだものを、トークン層と文書ご
 ## テーマ
 
 色のトークン（`--color-*`）はテーマで差し替えられる。組み込みのプリセットは Kotoba（既定）、
-Kotoba Dark、Washi と、背景画像を敷く山・川・海・森・夜の 8 つで、ユーザーはそれを元にした
+Kotoba Dark、Washi と、背景画像を敷く山・川・海・森・夜・焚き火・雨の 10 個で、ユーザーはそれを元にした
 カスタムのプリセットを作れる。
 
 - **変えるのは意味のトークン、選ぶのはパレットの段。** 設定画面は意味のトークン（面・文字・
@@ -427,17 +427,24 @@ Kotoba Dark、Washi と、背景画像を敷く山・川・海・森・夜の 8 
   背景を持たないので、本文は写真の上に直に乗る。サイドバーとステータスバーにだけ
   `paper` の濃さで重ね、本文と区切る。写真を持たないプリセットでは 4 つとも空になり、
   見た目は変わらない。
+- **写真の明るさで color-scheme を決める。** 黒に近い写真（夜・焚き火・雨）は Dark の
+  プリセットにし、文字を白系（ランプの 900 が明るい色）にする。明るい写真（山・川・海・森）は
+  Light。写真を足すときは 64×43 に縮めたグレースケールの平均（0〜255）を測り、おおよそ
+  90 を下回れば Dark にする（今の写真は 山 147・川 108・海 170・森 95・夜 56・焚き火 38・雨 78）。
+  ぼかすと細かいもの（星や蛍の光）は消えるので、色と明暗の大きな塊で選ぶ。
 - **写真は Unsplash から取った。** [Unsplash License](https://unsplash.com/license)
-  （商用も含めて無料で使え、クレジットも要らない）のもので、1600px・JPEG で
-  `src/assets/backdrops/` に置いている。ぼかして使うので、これより大きくしない。
+  （商用も含めて無料で使え、クレジットも要らない）のもので、Unsplash+ の写真は使わない。
+  1600×1067・JPEG で `src/assets/backdrops/` に置いている。ぼかして使うので、これより大きくしない。
 
   | ファイル | 写真 | 撮影 |
   | --- | --- | --- |
-  | `yama.jpg` | [朝霧に沈む青い連山](https://unsplash.com/photos/O8Y4TPR2tEk) | yangzhiyuan |
-  | `kawa.jpg` | [緑の谷を蛇行する川](https://unsplash.com/photos/S7M9k4d18UQ) | Dennis Zhang |
-  | `umi.jpg` | [曇り空の凪いだ海](https://unsplash.com/photos/W8d0JdvCVuI) | Anna Hunko |
-  | `mori.jpg` | [霧の針葉樹林](https://unsplash.com/photos/m8rM-X6S54o) | Micah & Sammie Chaffin |
-  | `yoru.jpg` | [星空と山影](https://unsplash.com/photos/UeRIcbTthwE) | Filip Kvasnak |
+  | `yama.jpg` | [雲海と朝焼けの山並み](https://unsplash.com/photos/ic_ED5M5evg) | Yevhenii Deshko |
+  | `kawa.jpg` | [新緑の森を流れる渓流](https://unsplash.com/photos/3GkCCtlxt0w) | Eugene |
+  | `umi.jpg` | [砂浜に寄せる波と水平線](https://unsplash.com/photos/ICQLkj8zMeU) | Robert Woeger |
+  | `mori.jpg` | [木漏れ日の苔むした森](https://unsplash.com/photos/xXbaTOP31M4) | Caspian Dahlström |
+  | `yoru.jpg` | [星の軌跡と蛍の夜](https://unsplash.com/photos/s6wdwpZCtkk) | Mike Lewinski |
+  | `takibi.jpg` | [夜の焚き火](https://unsplash.com/photos/TRys9NU8GiQ) | Luke Porter |
+  | `ame.jpg` | [夜の窓の雨粒と街の灯](https://unsplash.com/photos/1e60bqR1Ar0) | Max van den Oetelaar |
 - **カスタムは「元にした組み込みのプリセット + 変えたトークン」。** 組み込みのプリセットは
   変えられず、そこで色を変えると写したカスタムができる。color-scheme と、`r` で戻す先は
   元のプリセットから取る。
@@ -449,6 +456,33 @@ Kotoba Dark、Washi と、背景画像を敷く山・川・海・森・夜の 8 
 - **変えるのは設定画面の「テーマ」。** 組み込みのプリセットへの切り替えはコマンドにも
   なっている（`app.theme.<id>`、パレットの「テーマ: <名前>」）。キーは割り当てていない。
 
-プリセットを足すときは、`THEMES` に `{ id, label, colorScheme, backdrop, tokens: preset({ … }) }`
+プリセットを足すときは、`THEMES` に `{ id, label, colorScheme, backdrop, ambience, tokens: preset({ … }) }`
 を足し、ランプ 11 段とアクセント 4 段の色を書く。写真を敷くなら `backdrop` に写真と
 `LIGHT_BACKDROP` / `DARK_BACKDROP`（ぼかしと濃さ）を、敷かないなら `null` を書く。
+`ambience` には写真に合わせた BGM（下の「BGM」）の ID を、無ければ `null` を書く。
+
+### BGM
+
+書いているあいだ、テーマの写真に合わせた環境音を流せる（しずかなインターネットの「ムード」に
+倣った）。焚き火の写真なら焚き火の音、雨の窓なら雨の音。
+
+- **音は `src/lib/ambience.ts` の `AMBIENCES` に書く。** プリセットは `ambience` で音を指し、
+  カスタムは元のプリセットの音を使う。設定の「BGM」は 流さない（既定）/ テーマに合わせる /
+  音を決める から選ぶ。テーマに合わせても、音の無いテーマ（Kotoba など）では流さない。
+- **流すのは `src/lib/ambience-player.ts`。** Web Audio でデコードして流す。MP3 は頭と尻に
+  無音が入り、そのまま繰り返すと境目で途切れるので、終わりの 4 秒を次の頭と等パワーで重ねて
+  つなぐ。音やテーマを替えると 1.5 秒で入れ替わる。音量は設定の % を 2 乗して掛ける。
+  WebView は操作を受けるまで音を出させないので、起動して最初のキーかクリックで鳴り始める。
+- **音は Freesound の CC0 のものを使う。** 60〜80 秒を切り出し、ラウドネスを -20 LUFS に揃え、
+  112kbps の MP3 で `src/assets/ambience/` に置いている。切り出すのは、1 秒ごとの音量の山が
+  いちばん小さい区間（急に大きな音が入らないところ）。
+
+  | ファイル | 音 | 録音 |
+  | --- | --- | --- |
+  | `yama.mp3` | [山頂の茂みを渡る風](https://freesound.org/people/felix.blume/sounds/135193/) | felix.blume |
+  | `kawa.mp3` | [穏やかな渓流](https://freesound.org/people/INNORECORDS/sounds/469009/) | INNORECORDS |
+  | `umi.mp3` | [凪の波打ち際](https://freesound.org/people/craiggroshek/sounds/176617/) | craiggroshek |
+  | `mori.mp3` | [春の午後の森](https://freesound.org/people/bajko/sounds/385280/) | bajko |
+  | `yoru.mp3` | [夏の夜の虫](https://freesound.org/people/hdfreema/sounds/333221/) | hdfreema |
+  | `takibi.mp3` | [焚き火](https://freesound.org/people/Spandau/sounds/40699/) | Spandau |
+  | `ame.mp3` | [窓に打ちつける雨](https://freesound.org/people/bastipictures/sounds/243781/) | bastipictures |

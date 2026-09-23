@@ -2,11 +2,14 @@
  * テーマ。色のトークンの値をプリセットごとに持ち、ユーザーの上書きを重ねて `<html>` に書く。
  * 考え方と足し方は docs/kotoba-design-system.md の「テーマ」。
  */
+import ame from '@/assets/backdrops/ame.jpg'
 import kawa from '@/assets/backdrops/kawa.jpg'
 import mori from '@/assets/backdrops/mori.jpg'
+import takibi from '@/assets/backdrops/takibi.jpg'
 import umi from '@/assets/backdrops/umi.jpg'
 import yama from '@/assets/backdrops/yama.jpg'
 import yoru from '@/assets/backdrops/yoru.jpg'
+import type { AmbienceId } from './ambience'
 
 /** パレット。意味のトークンが指す段で、プリセットの違いはここだけ */
 export const PALETTE_TOKENS = [
@@ -129,7 +132,7 @@ export interface Backdrop {
 }
 
 const LIGHT_BACKDROP = { blur: 28, veil: 0.55, paper: 0.45 }
-const DARK_BACKDROP = { blur: 28, veil: 0.5, paper: 0.45 }
+const DARK_BACKDROP = { blur: 28, veil: 0.4, paper: 0.45 }
 
 export const THEMES = [
   {
@@ -137,6 +140,7 @@ export const THEMES = [
     label: 'Kotoba',
     colorScheme: 'light',
     backdrop: null,
+    ambience: null,
     // globals.css の @theme と同じ値（theme.test.ts で確かめる）
     tokens: preset({
       'gray-0': '#ffffff',
@@ -161,6 +165,7 @@ export const THEMES = [
     label: 'Kotoba Dark',
     colorScheme: 'dark',
     backdrop: null,
+    ambience: null,
     tokens: preset({
       'gray-0': '#16161a',
       'gray-25': '#1b1b20',
@@ -184,6 +189,7 @@ export const THEMES = [
     label: 'Washi',
     colorScheme: 'light',
     backdrop: null,
+    ambience: null,
     tokens: preset({
       'gray-0': '#fdfbf7',
       'gray-25': '#f9f6f0',
@@ -207,6 +213,7 @@ export const THEMES = [
     label: '山',
     colorScheme: 'light',
     backdrop: { image: yama, ...LIGHT_BACKDROP },
+    ambience: 'yama',
     tokens: preset({
       'gray-0': '#fbfbfd',
       'gray-25': '#f6f7fa',
@@ -230,6 +237,7 @@ export const THEMES = [
     label: '川',
     colorScheme: 'light',
     backdrop: { image: kawa, ...LIGHT_BACKDROP },
+    ambience: 'kawa',
     tokens: preset({
       'gray-0': '#fbfcfa',
       'gray-25': '#f5f8f4',
@@ -253,6 +261,7 @@ export const THEMES = [
     label: '海',
     colorScheme: 'light',
     backdrop: { image: umi, ...LIGHT_BACKDROP },
+    ambience: 'umi',
     tokens: preset({
       'gray-0': '#fbfcfe',
       'gray-25': '#f5f8fb',
@@ -276,6 +285,7 @@ export const THEMES = [
     label: '森',
     colorScheme: 'light',
     backdrop: { image: mori, ...LIGHT_BACKDROP },
+    ambience: 'mori',
     tokens: preset({
       'gray-0': '#fafaf6',
       'gray-25': '#f5f5ef',
@@ -299,22 +309,71 @@ export const THEMES = [
     label: '夜',
     colorScheme: 'dark',
     backdrop: { image: yoru, ...DARK_BACKDROP },
+    ambience: 'yoru',
     tokens: preset({
-      'gray-0': '#121829',
-      'gray-25': '#161d30',
-      'gray-50': '#1b2338',
-      'gray-100': '#232c43',
-      'gray-200': '#2f3952',
-      'gray-300': '#414c67',
-      'gray-400': '#5f6a86',
-      'gray-500': '#8490ab',
-      'gray-600': '#a9b3ca',
-      'gray-800': '#d9deea',
-      'gray-900': '#eef1f7',
-      accent: '#e3b55b',
-      'accent-600': '#eac47c',
-      'accent-700': '#f0d49e',
-      'accent-tint': '#3a3322',
+      'gray-0': '#0f1411',
+      'gray-25': '#131a16',
+      'gray-50': '#18201b',
+      'gray-100': '#1f2923',
+      'gray-200': '#2a362f',
+      'gray-300': '#3b4a41',
+      'gray-400': '#58695e',
+      'gray-500': '#7d8f83',
+      'gray-600': '#a3b3a8',
+      'gray-800': '#d6e0d9',
+      'gray-900': '#eef3ef',
+      accent: '#cfdc62',
+      'accent-600': '#d9e47f',
+      'accent-700': '#e3ec9e',
+      'accent-tint': '#2e3320',
+    }),
+  },
+  {
+    id: 'takibi',
+    label: '焚き火',
+    colorScheme: 'dark',
+    backdrop: { image: takibi, ...DARK_BACKDROP },
+    ambience: 'takibi',
+    tokens: preset({
+      'gray-0': '#15110e',
+      'gray-25': '#1a1512',
+      'gray-50': '#211a16',
+      'gray-100': '#2a221d',
+      'gray-200': '#372d26',
+      'gray-300': '#4b3e35',
+      'gray-400': '#6c5b4f',
+      'gray-500': '#917e70',
+      'gray-600': '#b8a697',
+      'gray-800': '#e3d7cc',
+      'gray-900': '#f5eee8',
+      accent: '#f0883e',
+      'accent-600': '#f39d5e',
+      'accent-700': '#f6b582',
+      'accent-tint': '#3b2616',
+    }),
+  },
+  {
+    id: 'ame',
+    label: '雨',
+    colorScheme: 'dark',
+    backdrop: { image: ame, ...DARK_BACKDROP },
+    ambience: 'ame',
+    tokens: preset({
+      'gray-0': '#10151b',
+      'gray-25': '#141a21',
+      'gray-50': '#192028',
+      'gray-100': '#202833',
+      'gray-200': '#2b3541',
+      'gray-300': '#3c4856',
+      'gray-400': '#5a6878',
+      'gray-500': '#7f8d9d',
+      'gray-600': '#a6b2c0',
+      'gray-800': '#d8dfe7',
+      'gray-900': '#eef2f6',
+      accent: '#6cc4d4',
+      'accent-600': '#8ad0dd',
+      'accent-700': '#a9dce6',
+      'accent-tint': '#1c3138',
     }),
   },
 ] as const satisfies readonly {
@@ -322,6 +381,8 @@ export const THEMES = [
   label: string
   colorScheme: 'light' | 'dark'
   backdrop: Backdrop | null
+  /** テーマに合わせて流す BGM（ambience.ts） */
+  ambience: AmbienceId | null
   tokens: TokenMap
 }[]
 
@@ -350,6 +411,8 @@ export interface ResolvedTheme {
   tokens: TokenMap
   /** 背景の画像。カスタムは元のプリセットのものを使う */
   backdrop: Backdrop | null
+  /** テーマに合わせて流す BGM。カスタムは元のプリセットのものを使う */
+  ambience: AmbienceId | null
   /** 元にした組み込みのプリセット。組み込みならそれ自身 */
   base: (typeof THEMES)[number]
   custom: CustomTheme | null
@@ -380,6 +443,7 @@ export function resolveTheme(id: ThemeId, customs: readonly CustomTheme[]): Reso
       colorScheme: base.colorScheme,
       tokens: { ...base.tokens, ...custom.tokens },
       backdrop: base.backdrop,
+      ambience: base.ambience,
       base,
       custom,
     }

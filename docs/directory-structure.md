@@ -23,7 +23,7 @@ treemo/
 src/
 ├── main.tsx             エントリ。フォントと globals.css を読み、App を描く
 ├── app/                 合成層。features をつなぎ、画面の骨格を作る
-├── assets/              画像などの静的ファイル（テーマの背景の写真は backdrops/）
+├── assets/              画像などの静的ファイル（テーマの背景の写真は backdrops/、BGM は ambience/）
 ├── components/
 │   ├── ui/              UI の部品（Kotoba）。props だけで動く最下層
 │   └── layouts/         画面の外枠（サイドバー、ステータスバー、grid）

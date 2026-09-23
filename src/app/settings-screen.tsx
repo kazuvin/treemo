@@ -5,6 +5,7 @@ import { Select } from '@/components/ui/select'
 import { KeybindingEditor } from '@/features/commands/components/keybinding-editor'
 import { useTreeStore } from '@/features/tree/stores/tree-store'
 import { useVaultStore } from '@/features/vault/stores/vault-store'
+import { BGM_CHOICES, BGM_VOLUMES, bgmChoiceLabel, DEFAULT_BGM_VOLUME } from '@/lib/ambience'
 import { cn } from '@/lib/cn'
 import { DEFAULT_FONT_SIZE, FONT_SIZES } from '@/lib/font-size'
 import { currentKeyOverrides, defaultCommands, pickVault, saveKeyOverrides } from './commands'
@@ -43,6 +44,10 @@ function GeneralSettings({ onClose }: { onClose: () => void }) {
   const setSidebarSide = useUiStore((s) => s.setSidebarSide)
   const fontSize = useUiStore((s) => s.fontSize)
   const setFontSize = useUiStore((s) => s.setFontSize)
+  const bgm = useUiStore((s) => s.bgm)
+  const setBgm = useUiStore((s) => s.setBgm)
+  const bgmVolume = useUiStore((s) => s.bgmVolume)
+  const setBgmVolume = useUiStore((s) => s.setBgmVolume)
   const showKeyGuide = useTreeStore((s) => s.showKeyGuide)
   const setShowKeyGuide = useTreeStore((s) => s.setShowKeyGuide)
   const vault = useVaultStore((s) => s.vault)
@@ -67,6 +72,24 @@ function GeneralSettings({ onClose }: { onClose: () => void }) {
         label: size === DEFAULT_FONT_SIZE ? `${size}px（既定）` : `${size}px`,
         selected: fontSize === size,
         select: () => setFontSize(size),
+      })),
+    },
+    {
+      label: 'BGM',
+      dropdown: true,
+      options: BGM_CHOICES.map((choice) => ({
+        label: bgmChoiceLabel(choice),
+        selected: bgm === choice,
+        select: () => setBgm(choice),
+      })),
+    },
+    {
+      label: 'BGM の音量',
+      dropdown: true,
+      options: BGM_VOLUMES.map((volume) => ({
+        label: volume === DEFAULT_BGM_VOLUME ? `${volume}%（既定）` : `${volume}%`,
+        selected: bgmVolume === volume,
+        select: () => setBgmVolume(volume),
       })),
     },
     {

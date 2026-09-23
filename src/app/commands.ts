@@ -13,6 +13,13 @@ import { vaultDefaultDir, vaultFrontMatters } from '@/features/vault/api/vault'
 import { useVaultStore } from '@/features/vault/stores/vault-store'
 import { displayName, parentDir, toNotePath, visibleRows } from '@/features/vault/utils/file-tree'
 import { buildTagIndex } from '@/features/vault/utils/tag-index'
+import {
+  type BgmChoice,
+  BGM_CHOICES,
+  bgmChoiceLabel,
+  DEFAULT_BGM_VOLUME,
+  stepBgmVolume,
+} from '@/lib/ambience'
 import type { Command, CommandContext } from '@/lib/command'
 import { FONT_FAMILIES } from '@/lib/font-family'
 import { DEFAULT_FONT_SIZE, stepFontSize } from '@/lib/font-size'
@@ -219,6 +226,19 @@ export function openSettings(): void {
   ui.setSettingsOpen(true)
 }
 
+/** BGM を止める前に流していたもの。もう一度切り替えるとこれに戻す */
+let lastBgm: Exclude<BgmChoice, 'off'> = 'theme'
+
+function toggleBgm(): void {
+  const ui = useUiStore.getState()
+  if (ui.bgm === 'off') {
+    ui.setBgm(lastBgm)
+    return
+  }
+  lastBgm = ui.bgm
+  ui.setBgm('off')
+}
+
 const hasVault = () => useVaultStore.getState().vault !== null
 
 const appCommands: Command[] = [
@@ -374,6 +394,33 @@ const appCommands: Command[] = [
     },
   },
   {
+    id: 'app.bgm.toggle',
+    title: 'BGM を流す / 止める',
+    keys: [{ scope: 'normal', sequence: '<Space>m' }],
+    run: toggleBgm,
+  },
+  {
+    id: 'app.bgm.volumeUp',
+    title: 'BGM を大きくする',
+    run: () => {
+      const ui = useUiStore.getState()
+      ui.setBgmVolume(stepBgmVolume(ui.bgmVolume, 1))
+    },
+  },
+  {
+    id: 'app.bgm.volumeDown',
+    title: 'BGM を小さくする',
+    run: () => {
+      const ui = useUiStore.getState()
+      ui.setBgmVolume(stepBgmVolume(ui.bgmVolume, -1))
+    },
+  },
+  {
+    id: 'app.bgm.volumeReset',
+    title: `BGM の音量を既定（${DEFAULT_BGM_VOLUME}%）に戻す`,
+    run: () => useUiStore.getState().setBgmVolume(DEFAULT_BGM_VOLUME),
+  },
+  {
     id: 'app.editKeybindings',
     title: 'キーの割り当てを変える（keybindings.json を開く）',
     run: () =>
@@ -496,11 +543,19 @@ const fontFamilyCommands: Command[] = FONT_FAMILIES.map((font) => ({
   run: () => useUiStore.getState().setFontFamily(font.id),
 }))
 
+const bgmCommands: Command[] = BGM_CHOICES.filter((choice) => choice !== 'off').map((choice) => ({
+  id: `app.bgm.${choice}`,
+  title: `BGM: ${bgmChoiceLabel(choice)}`,
+  when: () => useUiStore.getState().bgm !== choice,
+  run: () => useUiStore.getState().setBgm(choice),
+}))
+
 /** 上書きを重ねる前の、既定の割り当てのコマンド */
 export const defaultCommands: readonly Command[] = [
   ...appCommands,
   ...themeCommands,
   ...fontFamilyCommands,
+  ...bgmCommands,
   ...editorCommands,
   ...treeCommands,
 ]

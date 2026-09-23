@@ -15,8 +15,11 @@ const SAVE_LABELS: Record<SaveState, string> = {
 
 const FOCUS_LABELS = { sidebar: 'サイドバー', editor: 'エディタ', overlay: '' }
 
-/** モード（F-UX-4）、フォーカスのある領域（F-UX-7）、保存の状態を常に出す */
-export function StatusBar() {
+/**
+ * モード（F-UX-4）、フォーカスのある領域（F-UX-7）、保存の状態を常に出す。
+ * ambience は流している BGM の名前
+ */
+export function StatusBar({ ambience }: { ambience: string | null }) {
   const vim = useModeStore((s) => s.vim)
   const tree = useModeStore((s) => s.tree)
   const nodeEditing = useModeStore((s) => s.nodeEditing)
@@ -49,6 +52,7 @@ export function StatusBar() {
           {SAVE_LABELS[saveState]}
         </span>
       )}
+      {ambience && <span className="text-muted-foreground">♪ {ambience}</span>}
       {vault && <span className="text-muted-foreground">{vault.name.normalize('NFC')}</span>}
     </footer>
   )

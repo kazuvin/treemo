@@ -1,6 +1,7 @@
 import { invoke } from '@tauri-apps/api/core'
 import { z } from 'zod'
 import { vimConfigSchema } from '@/features/editor/utils/vim-config'
+import { DEFAULT_BGM, DEFAULT_BGM_VOLUME } from '@/lib/ambience'
 import { DEFAULT_FONT_FAMILY } from '@/lib/font-family'
 import { DEFAULT_FONT_SIZE } from '@/lib/font-size'
 import { DEFAULT_THEME } from '@/lib/theme'
@@ -23,6 +24,9 @@ const schema = z.object({
   fontSize: z.number().catch(DEFAULT_FONT_SIZE),
   // 知らない書体は font-family.ts の sanitizeFontFamily が既定にする
   fontFamily: z.string().catch(DEFAULT_FONT_FAMILY),
+  // 知らない音は ambience.ts の sanitizeBgm が止める。音量は sanitizeBgmVolume が寄せる
+  bgm: z.string().catch(DEFAULT_BGM),
+  bgmVolume: z.number().catch(DEFAULT_BGM_VOLUME),
   preferFullscreen: z.boolean().default(false),
   showKeyGuide: z.boolean().default(true),
   // 無い ID なら theme.ts の resolveTheme が既定のテーマにする

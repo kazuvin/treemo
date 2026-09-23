@@ -25,6 +25,8 @@ import { TagSearch } from '@/features/vault/components/tag-search'
 import { VaultPicker } from '@/features/vault/components/vault-picker'
 import { useVaultStore } from '@/features/vault/stores/vault-store'
 import { toNotePath } from '@/features/vault/utils/file-tree'
+import { currentAmbience, sanitizeBgm, sanitizeBgmVolume } from '@/lib/ambience'
+import { playAmbience, setAmbienceVolume } from '@/lib/ambience-player'
 import { cn } from '@/lib/cn'
 import { applyFontFamily, sanitizeFontFamily } from '@/lib/font-family'
 import { applyFontSize, sanitizeFontSize } from '@/lib/font-size'
@@ -111,6 +113,16 @@ function gridColumns(sidebarVisible: boolean, side: SidebarSide): string {
   return side === 'left' ? '240px minmax(0, 1fr)' : 'minmax(0, 1fr) 240px'
 }
 
+/** BGM を今の選択とテーマに合わせる */
+function syncAmbience(): void {
+  const { theme, customThemes } = useThemeStore.getState()
+  const ambience = currentAmbience(
+    useUiStore.getState().bgm,
+    resolveTheme(theme, customThemes).ambience,
+  )
+  void playAmbience(ambience?.src ?? null)
+}
+
 async function boot(): Promise<void> {
   const state = await loadPersistedState()
   useUiStore.getState().setSidebarVisible(state.sidebarVisible)
@@ -119,6 +131,9 @@ async function boot(): Promise<void> {
   applyFontSize(useUiStore.getState().fontSize)
   useUiStore.getState().setFontFamily(sanitizeFontFamily(state.fontFamily))
   applyFontFamily(useUiStore.getState().fontFamily)
+  useUiStore.getState().setBgm(sanitizeBgm(state.bgm))
+  useUiStore.getState().setBgmVolume(sanitizeBgmVolume(state.bgmVolume))
+  setAmbienceVolume(useUiStore.getState().bgmVolume)
   useTreeStore.getState().setPreferFullscreen(state.preferFullscreen)
   useTreeStore.getState().setShowKeyGuide(state.showKeyGuide)
   const customThemes = sanitizeCustomThemes(state.customThemes)
@@ -128,6 +143,7 @@ async function boot(): Promise<void> {
   useThemeStore.subscribe((theme, prev) => {
     if (theme.theme !== prev.theme || theme.customThemes !== prev.customThemes) {
       applyTheme(resolveTheme(theme.theme, theme.customThemes))
+      syncAmbience()
       updatePersistedState((s) => ({
         ...s,
         theme: theme.theme,
@@ -148,11 +164,19 @@ async function boot(): Promise<void> {
     if (ui.fontFamily !== prev.fontFamily) {
       applyFontFamily(ui.fontFamily)
     }
+    if (ui.bgm !== prev.bgm) {
+      syncAmbience()
+    }
+    if (ui.bgmVolume !== prev.bgmVolume) {
+      setAmbienceVolume(ui.bgmVolume)
+    }
     if (
       ui.sidebarVisible !== prev.sidebarVisible ||
       ui.sidebarSide !== prev.sidebarSide ||
       ui.fontSize !== prev.fontSize ||
-      ui.fontFamily !== prev.fontFamily
+      ui.fontFamily !== prev.fontFamily ||
+      ui.bgm !== prev.bgm ||
+      ui.bgmVolume !== prev.bgmVolume
     ) {
       updatePersistedState((s) => ({
         ...s,
@@ -160,9 +184,12 @@ async function boot(): Promise<void> {
         sidebarSide: ui.sidebarSide,
         fontSize: ui.fontSize,
         fontFamily: ui.fontFamily,
+        bgm: ui.bgm,
+        bgmVolume: ui.bgmVolume,
       }))
     }
   })
+  syncAmbience()
   useTreeStore.subscribe((tree, prev) => {
     if (
       tree.preferFullscreen !== prev.preferFullscreen ||
@@ -194,6 +221,9 @@ export function App() {
   const focus = useModeStore((s) => s.focus)
   const commands = useCommandStore((s) => s.commands)
   const view = useEditorView()
+  const bgm = useUiStore((s) => s.bgm)
+  const themeAmbience = useThemeStore((s) => resolveTheme(s.theme, s.customThemes).ambience)
+  const ambience = currentAmbience(bgm, themeAmbience)
   const settingsKey = keyLabel(commands, 'app.settings')
   const hint = (id: string, label: string) => {
     const key = keyLabel(commands, id)
@@ -314,7 +344,7 @@ export function App() {
           <WhichKey getContext={getContext} getScopes={getScopes} />
         </main>
       </div>
-      <StatusBar />
+      <StatusBar ambience={ambience?.label ?? null} />
       <CommandPalette getContext={getContext} restoreFocus={restoreFocus} />
       <KeyList restoreFocus={restoreFocus} />
       <QuickSwitcher
