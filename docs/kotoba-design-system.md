@@ -356,3 +356,24 @@ kazuvin.me（Next.js）に取り込んだものを、トークン層と文書ご
   フォーカスの一種として扱う（[キー操作](keybindings.md) の「モード」）。
 - **`src/lib/cn.ts` は kazuvin.me と同じ。** `text-2xs` と `text-mark` を `font-size` として
   登録している理由はそちらの経緯のまま。回帰テストは `src/lib/cn.test.ts`。
+
+## テーマ
+
+色のトークンはテーマごとに差し替えられる。今あるのは Kotoba（既定）の 1 つだけ。
+
+- **選んでいるテーマは状態として持つ。** `src/stores/theme-store.ts` が ID を持ち、
+  `src/app/app.tsx` が購読して `<html data-theme="<id>">` と `color-scheme` を書き、
+  アプリの状態（`src/app/persisted-state.ts` の `theme`）に保存する。
+  保存した ID が一覧に無ければ既定に戻す。
+- **切り替えはコマンド。** テーマごとに `app.theme.<id>`（パレットの「テーマ: <名前>」）を
+  登録する。キーは割り当てていない。
+- **色の値は CSS にだけ書く。** `globals.css` の `@theme` にある値が Kotoba のもので、
+  Tailwind のユーティリティはこれを `var()` で参照している。別のテーマは
+  `:root[data-theme='<id>']` で同じ変数を上書きするので、コンポーネントは書き換えない。
+
+テーマを足すときは次の 2 つをする。
+
+1. `src/lib/theme.ts` の `THEMES` に `{ id, label, colorScheme }` を足す。
+2. `src/styles/themes/<id>.css` に `:root[data-theme='<id>'] { … }` を書き、`globals.css` から
+   `@import` する。上書きするのは色の変数（ニュートラルランプ・アクセント・セマンティック）
+   だけで、書体・余白・角丸はテーマで変えない。「壊してはいけない 3 つの制約」はどのテーマでも守る。

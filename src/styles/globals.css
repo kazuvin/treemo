@@ -27,6 +27,11 @@
   --font-sans: "Noto Sans Mono Variable", "Noto Sans JP Variable", ui-monospace, monospace;
   --font-mono: "Noto Sans Mono Variable", "Noto Sans JP Variable", ui-monospace, monospace;
 
+  /** ---- 色 ----
+      ここに書く色の値は Kotoba テーマ（既定）のもの。ほかのテーマは
+      :root[data-theme='<id>'] で同じ変数を上書きする。data-theme は
+      src/lib/theme.ts の applyTheme が状態から書く。 */
+
   /** ---- ニュートラルランプ ----
       アクセント以外のすべての色 — 面も境界もテキストも、そしてプライマリ
       アクションの塗りもここが担う。Tailwind 既定の gray を先に消してあるので、

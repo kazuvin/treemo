@@ -7,8 +7,10 @@ import { vaultDefaultDir } from '@/features/vault/api/vault'
 import { useVaultStore } from '@/features/vault/stores/vault-store'
 import { displayName, parentDir, toNotePath, visibleRows } from '@/features/vault/utils/file-tree'
 import type { Command } from '@/lib/command'
+import { THEMES } from '@/lib/theme'
 import { useModeStore } from '@/stores/mode-store'
 import { useStatusStore } from '@/stores/status-store'
+import { useThemeStore } from '@/stores/theme-store'
 import { focusEditor, focusSidebar, rememberFocus } from './focus'
 import { notes } from './note-controller'
 import { useUiStore } from './ui-store'
@@ -300,8 +302,18 @@ const appCommands: Command[] = [
   ),
 ]
 
+const themeCommands: Command[] = THEMES.map((theme) => ({
+  id: `app.theme.${theme.id}`,
+  title: `テーマ: ${theme.label}`,
+  when: () => useThemeStore.getState().theme !== theme.id,
+  run: () => useThemeStore.getState().setTheme(theme.id),
+}))
+
 export function registerCommands(): void {
   useCommandStore
     .getState()
-    .register([...appCommands, ...editorCommands, ...treeCommands], { f: 'ファイル', t: 'ツリー' })
+    .register([...appCommands, ...themeCommands, ...editorCommands, ...treeCommands], {
+      f: 'ファイル',
+      t: 'ツリー',
+    })
 }

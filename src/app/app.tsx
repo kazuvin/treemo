@@ -19,7 +19,9 @@ import { VaultPicker } from '@/features/vault/components/vault-picker'
 import { useVaultStore } from '@/features/vault/stores/vault-store'
 import { toNotePath } from '@/features/vault/utils/file-tree'
 import { cn } from '@/lib/cn'
+import { applyTheme } from '@/lib/theme'
 import { useModeStore } from '@/stores/mode-store'
+import { useThemeStore } from '@/stores/theme-store'
 import { pickVault, registerCommands } from './commands'
 import { focusEditor, restoreFocus, trackFocus } from './focus'
 import { clearStatusMessage, getContext, getScopes, replayKeys, swallowKey } from './keys'
@@ -66,6 +68,14 @@ async function boot(): Promise<void> {
   useUiStore.getState().setSidebarVisible(state.sidebarVisible)
   useTreeStore.getState().setPreferFullscreen(state.preferFullscreen)
   useTreeStore.getState().setShowKeyGuide(state.showKeyGuide)
+  useThemeStore.getState().setTheme(state.theme)
+  applyTheme(state.theme)
+  useThemeStore.subscribe((theme, prev) => {
+    if (theme.theme !== prev.theme) {
+      applyTheme(theme.theme)
+      updatePersistedState((s) => ({ ...s, theme: theme.theme }))
+    }
+  })
   useUiStore.subscribe((ui, prev) => {
     if (ui.sidebarVisible !== prev.sidebarVisible) {
       updatePersistedState((s) => ({ ...s, sidebarVisible: ui.sidebarVisible }))
