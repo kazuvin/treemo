@@ -160,26 +160,33 @@
   --font-weight-semibold: 600;
   --font-weight-bold: 700;
 
-  /** サイズスケール 4 段。コメントの px はルート 16px 時の実寸。
-      base が基準であり上限で、この上に段は無い。 */
+  /** サイズスケール 4 段。コメントの px はルート 16px で --font-scale が 1 のときの実寸。
+      base が基準であり、本文の上限。この上にはメモのタイトル (title) だけがある。
+      どの段も --font-scale を掛ける。ユーザーが設定で選ぶ文字の大きさ (base の px) を
+      14 で割った値で、html の基準を動かさずに文字だけを比例して伸び縮みさせる。 */
   --text-*: initial;
 
-  --text-2xs: 0.6875rem; /* 11 / 16 */
-  --text-2xs--line-height: 1rem;
+  --text-2xs: calc(0.6875rem * var(--font-scale)); /* 11 / 16 */
+  --text-2xs--line-height: calc(1rem * var(--font-scale));
   --text-2xs--letter-spacing: var(--tracking-wider);
 
-  --text-xs: 0.75rem; /* 12 / 16 */
-  --text-xs--line-height: 1rem;
+  --text-xs: calc(0.75rem * var(--font-scale)); /* 12 / 16 */
+  --text-xs--line-height: calc(1rem * var(--font-scale));
   --text-xs--letter-spacing: var(--tracking-wide);
 
-  --text-sm: 0.8125rem; /* 13 / 20 */
-  --text-sm--line-height: 1.25rem;
+  --text-sm: calc(0.8125rem * var(--font-scale)); /* 13 / 20 */
+  --text-sm--line-height: calc(1.25rem * var(--font-scale));
   --text-sm--letter-spacing: var(--tracking-normal);
 
-  /** 基準サイズ。本文も見出しもここに乗る。スケールの上限でもある。 */
-  --text-base: 0.875rem; /* 14 / 20 */
-  --text-base--line-height: 1.25rem;
+  /** 基準サイズ。本文も見出しもここに乗る。 */
+  --text-base: calc(0.875rem * var(--font-scale)); /* 14 / 20 */
+  --text-base--line-height: calc(1.25rem * var(--font-scale));
   --text-base--letter-spacing: var(--tracking-normal);
+
+  /** 本文の上に出すメモの名前だけの段。本文の中の見出しは base のまま。 */
+  --text-title: calc(1.25rem * var(--font-scale)); /* 20 / 28 */
+  --text-title--line-height: calc(1.75rem * var(--font-scale));
+  --text-title--letter-spacing: var(--tracking-tight);
 
   /** 文字組みの外側。絵文字や数字を「文字」ではなく「絵」として置く 1 箇所
       だけのための逃がし口で、テキストの段ではない (だから 2xs…base の梯子に
@@ -387,6 +394,11 @@
   .animation-forwards {
     animation-fill-mode: forwards;
   }
+}
+
+/* 文字の大きさの倍率。applyFontSize が <html> の style で上書きする */
+:root {
+  --font-scale: 1;
 }
 
 /* body には font-size を敷かない。ここは rem の基準を 16px に保つ層で、

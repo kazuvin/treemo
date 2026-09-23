@@ -15,6 +15,7 @@ import {
   VaultCommandError,
 } from '@/features/vault/api/vault'
 import { initialSession, useVaultStore } from '@/features/vault/stores/vault-store'
+import { displayName } from '@/features/vault/utils/file-tree'
 import { NoteCache } from '@/features/vault/utils/note-cache'
 import { NoteSession } from '@/features/vault/utils/note-session'
 import { useStatusStore } from '@/stores/status-store'
@@ -154,7 +155,7 @@ class NoteController {
     await this.closeCurrent({ keepOpenPath: true })
     // 開いている間の正本はエディタ。閉じるときに入れ直す
     this.cache.delete(path)
-    handle.load(note.content)
+    handle.load(note.content, displayName(path))
     const session = new NoteSession(
       path,
       note.hash,
@@ -327,7 +328,7 @@ class NoteController {
       this.cache.delete(path)
       if (this.session?.path === path) {
         await this.closeCurrent()
-        this.handle?.load('')
+        this.handle?.load('', null)
       }
       try {
         await noteTrash(path)

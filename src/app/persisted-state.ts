@@ -1,6 +1,7 @@
 import { invoke } from '@tauri-apps/api/core'
 import { z } from 'zod'
 import { vimConfigSchema } from '@/features/editor/utils/vim-config'
+import { DEFAULT_FONT_SIZE } from '@/lib/font-size'
 import { DEFAULT_THEME } from '@/lib/theme'
 
 /**
@@ -17,6 +18,8 @@ const schema = z.object({
   lastNote: z.record(z.string(), z.string()).default({}),
   sidebarVisible: z.boolean().default(true),
   sidebarSide: z.enum(['left', 'right']).catch('left'),
+  // 選べない値は font-size.ts の sanitizeFontSize が近いものに寄せる
+  fontSize: z.number().catch(DEFAULT_FONT_SIZE),
   preferFullscreen: z.boolean().default(false),
   showKeyGuide: z.boolean().default(true),
   // 無い ID なら theme.ts の resolveTheme が既定のテーマにする

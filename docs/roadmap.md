@@ -99,8 +99,9 @@ MVP までの実装の順番。1 つのタスクが 1 回の作業セッショ�
 
 ## M7 プロパティとタグ
 
-MVP の外で足したもの。読む: [要件定義](requirements.md) の F-EDIT-5・F-VAULT-8、
+MVP の外で足したもの。読む: [要件定義](requirements.md) の F-EDIT-5・F-EDIT-6・F-VAULT-8、
 [保管庫と iCloud](vault.md) の「フロントマターを集める」
 
 - [x] **7-1 フロントマターの表。** F-EDIT-5。`features/editor/extensions/front-matter.ts`。
 - [x] **7-2 タグ検索。** F-VAULT-8。Rust の `vault_front_matters` とタグの一覧。
+- [x] **7-3 本文の上のタイトル。** F-EDIT-6。`features/editor/extensions/note-title.ts`。

@@ -5,6 +5,7 @@ import { KeybindingEditor } from '@/features/commands/components/keybinding-edit
 import { useTreeStore } from '@/features/tree/stores/tree-store'
 import { useVaultStore } from '@/features/vault/stores/vault-store'
 import { cn } from '@/lib/cn'
+import { DEFAULT_FONT_SIZE, FONT_SIZES } from '@/lib/font-size'
 import { currentKeyOverrides, defaultCommands, pickVault, saveKeyOverrides } from './commands'
 import { openKeybindings } from './keybindings'
 import { ThemeSettings } from './theme-settings'
@@ -36,6 +37,8 @@ function GeneralSettings({ onClose }: { onClose: () => void }) {
   const rootRef = useRef<HTMLDivElement>(null)
   const sidebarSide = useUiStore((s) => s.sidebarSide)
   const setSidebarSide = useUiStore((s) => s.setSidebarSide)
+  const fontSize = useUiStore((s) => s.fontSize)
+  const setFontSize = useUiStore((s) => s.setFontSize)
   const showKeyGuide = useTreeStore((s) => s.showKeyGuide)
   const setShowKeyGuide = useTreeStore((s) => s.setShowKeyGuide)
   const vault = useVaultStore((s) => s.vault)
@@ -51,6 +54,14 @@ function GeneralSettings({ onClose }: { onClose: () => void }) {
         label: side === 'left' ? '左' : '右',
         selected: sidebarSide === side,
         select: () => setSidebarSide(side),
+      })),
+    },
+    {
+      label: '文字の大きさ',
+      options: FONT_SIZES.map((size) => ({
+        label: size === DEFAULT_FONT_SIZE ? `${size}px（既定）` : `${size}px`,
+        selected: fontSize === size,
+        select: () => setFontSize(size),
       })),
     },
     {

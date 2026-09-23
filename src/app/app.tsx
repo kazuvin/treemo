@@ -12,6 +12,7 @@ import { useCommandStore } from '@/features/commands/stores/command-store'
 import { keyLabel } from '@/features/commands/utils/key-label'
 import { Editor, type EditorHandle } from '@/features/editor/components/editor'
 import { tagClickHandler } from '@/features/editor/extensions/front-matter'
+import { noteTitleClickHandler } from '@/features/editor/extensions/note-title'
 import { applyVimConfig, setExHandlers } from '@/features/editor/extensions/vim-bridge'
 import { TreeFullscreen } from '@/features/tree/components/tree-fullscreen'
 import { treeExtension } from '@/features/tree/extensions/tree-extension'
@@ -25,6 +26,7 @@ import { VaultPicker } from '@/features/vault/components/vault-picker'
 import { useVaultStore } from '@/features/vault/stores/vault-store'
 import { toNotePath } from '@/features/vault/utils/file-tree'
 import { cn } from '@/lib/cn'
+import { applyFontSize, sanitizeFontSize } from '@/lib/font-size'
 import { applyTheme, resolveTheme, sanitizeCustomThemes } from '@/lib/theme'
 import { useModeStore } from '@/stores/mode-store'
 import { useThemeStore } from '@/stores/theme-store'
@@ -34,6 +36,7 @@ import {
   openTagSearch,
   pickVault,
   registerDefaultCommands,
+  renameNote,
 } from './commands'
 import { focusEditor, restoreFocus, trackFocus } from './focus'
 import { clearStatusMessage, getContext, getScopes, replayKeys, swallowKey } from './keys'
@@ -47,6 +50,7 @@ const editorExtensions = [
   treeExtension(),
   notes.extension,
   tagClickHandler.of((tag) => void openTagSearch(tag)),
+  noteTitleClickHandler.of(() => renameNote(false, useVaultStore.getState().openPath)),
 ]
 
 let editorView: EditorHandle['view'] | null = null
@@ -110,6 +114,8 @@ async function boot(): Promise<void> {
   const state = await loadPersistedState()
   useUiStore.getState().setSidebarVisible(state.sidebarVisible)
   useUiStore.getState().setSidebarSide(state.sidebarSide)
+  useUiStore.getState().setFontSize(sanitizeFontSize(state.fontSize))
+  applyFontSize(useUiStore.getState().fontSize)
   useTreeStore.getState().setPreferFullscreen(state.preferFullscreen)
   useTreeStore.getState().setShowKeyGuide(state.showKeyGuide)
   const customThemes = sanitizeCustomThemes(state.customThemes)
@@ -133,11 +139,19 @@ async function boot(): Promise<void> {
   })
   applyVimConfig(state.vim)
   useUiStore.subscribe((ui, prev) => {
-    if (ui.sidebarVisible !== prev.sidebarVisible || ui.sidebarSide !== prev.sidebarSide) {
+    if (ui.fontSize !== prev.fontSize) {
+      applyFontSize(ui.fontSize)
+    }
+    if (
+      ui.sidebarVisible !== prev.sidebarVisible ||
+      ui.sidebarSide !== prev.sidebarSide ||
+      ui.fontSize !== prev.fontSize
+    ) {
       updatePersistedState((s) => ({
         ...s,
         sidebarVisible: ui.sidebarVisible,
         sidebarSide: ui.sidebarSide,
+        fontSize: ui.fontSize,
       }))
     }
   })

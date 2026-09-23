@@ -14,6 +14,7 @@ import { useVaultStore } from '@/features/vault/stores/vault-store'
 import { displayName, parentDir, toNotePath, visibleRows } from '@/features/vault/utils/file-tree'
 import { buildTagIndex } from '@/features/vault/utils/tag-index'
 import type { Command, CommandContext } from '@/lib/command'
+import { DEFAULT_FONT_SIZE, stepFontSize } from '@/lib/font-size'
 import { THEMES } from '@/lib/theme'
 import { useModeStore } from '@/stores/mode-store'
 import { useStatusStore } from '@/stores/status-store'
@@ -74,8 +75,7 @@ function newNote(): void {
   })
 }
 
-function renameNote(move: boolean): void {
-  const from = targetNote()
+export function renameNote(move: boolean, from = targetNote()): void {
   if (!from) {
     useStatusStore.getState().show('対象のメモがありません')
     return
@@ -334,6 +334,32 @@ const appCommands: Command[] = [
     id: 'vault.pick',
     title: '保管庫を選び直す',
     run: () => void pickVault(),
+  },
+  {
+    id: 'app.fontSizeUp',
+    title: '文字を大きくする',
+    keys: [
+      { scope: 'global', sequence: '⌘=' },
+      { scope: 'global', sequence: '⌘+' },
+    ],
+    run: () => {
+      const ui = useUiStore.getState()
+      ui.setFontSize(stepFontSize(ui.fontSize, 1))
+    },
+  },
+  {
+    id: 'app.fontSizeDown',
+    title: '文字を小さくする',
+    keys: [{ scope: 'global', sequence: '⌘-' }],
+    run: () => {
+      const ui = useUiStore.getState()
+      ui.setFontSize(stepFontSize(ui.fontSize, -1))
+    },
+  },
+  {
+    id: 'app.fontSizeReset',
+    title: `文字の大きさを既定（${DEFAULT_FONT_SIZE}px）に戻す`,
+    run: () => useUiStore.getState().setFontSize(DEFAULT_FONT_SIZE),
   },
   {
     id: 'app.toggleSidebarSide',

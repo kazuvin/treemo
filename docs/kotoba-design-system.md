@@ -21,6 +21,7 @@ claude.ai/design のプロジェクト **"Kotoba Design System"** からこの�
    塗り・ステータス・装飾には一切使わない。1 画面あたりの塗り面積は「線」の量に収まる。
 3. **文字は `0.875rem` (14px) より大きくしない。** 見出しも本文もこの 1 サイズで、
    階層は太さ・色・余白で作る。上の段を足したくなったら、まず余白を疑う。
+   例外は本文の上に出すメモの名前（`text-title`、20px）だけ。
 
 赤いエラー・緑の成功といった**セマンティックカラーは存在しない**。
 ブリーフが色によるステータス表現を禁じているため、失敗状態は「言葉と位置」で表す。
@@ -103,7 +104,13 @@ rem の基準 (`html`) は **16px のまま触らない**。`html` を 87.5% に
 | `text-xs`     | `0.75rem`   | 12  | 1rem     | 0.02em   | ラベル・チップ・メタデータ    |
 | `text-sm`     | `0.8125rem` | 13  | 1.25rem  | 0        | キャプション・コード・表・レール |
 | **`text-base`** | **`0.875rem`** | **14** | **1.25rem** | **0** | **基準。本文も見出しもここ** |
+| `text-title`  | `1.25rem`   | 20  | 1.75rem  | -0.015em | メモの名前 (本文の上) だけ    |
 | `text-mark`   | `2rem`      | 32  | 1        | -0.025em | 文字組みの外 (下記)           |
+
+- **どの段も `--font-scale` を掛ける。** 設定の「文字の大きさ」(`text-base` の px、既定 14) を
+  14 で割った値で、`src/lib/font-size.ts` の `applyFontSize` が `<html>` の style に書く。
+  上の px は倍率 1 のとき。`html` の基準を振らないのは上の理由のとおりで、動くのは
+  `--text-*` とその line-height だけ。余白は変えない。
 
 - 梯子は 11 / 12 / 13 / 14 の **4 段だけ**で、上に伸びる段は持たない。
 - Tailwind 既定のスケールは `--text-*: initial` で消してある。`text-lg` や `text-2xl` は
@@ -361,11 +368,12 @@ kazuvin.me（Next.js）に取り込んだものを、トークン層と文書ご
   ここは Vite なので `src/main.tsx` で `@fontsource-variable/*` を読み、`globals.css` の
   `--font-sans` / `--font-mono` は書体名を直接指す。
 - **14px の上限はエディタにも効く。** メモの見出しも大きさでは段を付けず、太さ・色・余白で
-  区別する（[要件定義](requirements.md) の F-EDIT-2）。長文を等幅書体で書くことになるので、
+  区別する（[要件定義](requirements.md) の F-EDIT-2）。本文の上のメモの名前（F-EDIT-6）だけは
+  Obsidian や Notion に合わせて `text-title` で大きく出す。長文を等幅書体で書くことになるので、
   使ってみて読みにくければ、この制約ごと見直す。
 - **アクセント色は TREE モードの枠にも使う。** 「今キー入力を受け取っている場所」を示す
   フォーカスの一種として扱う（[キー操作](keybindings.md) の「モード」）。
-- **`src/lib/cn.ts` は kazuvin.me と同じ。** `text-2xs` と `text-mark` を `font-size` として
+- **`src/lib/cn.ts` は kazuvin.me と同じ。** `text-2xs` と `text-mark`（と Treemo で足した `text-title`）を `font-size` として
   登録している理由はそちらの経緯のまま。回帰テストは `src/lib/cn.test.ts`。
 
 ## テーマ

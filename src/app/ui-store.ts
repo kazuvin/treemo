@@ -1,4 +1,5 @@
 import { create } from 'zustand'
+import { DEFAULT_FONT_SIZE } from '@/lib/font-size'
 
 interface PromptRequest {
   title: string
@@ -14,10 +15,13 @@ interface UiState {
   sidebarVisible: boolean
   /** サイドバーを本文の左右どちらに置くか。`<C-w>h` / `<C-w>l` や端での移動の向きもこれで決まる */
   sidebarSide: SidebarSide
+  /** 本文の文字の大きさ（px）。ほかの文字もこれに比例する */
+  fontSize: number
   settingsOpen: boolean
   prompt: PromptRequest | null
   setSidebarVisible: (sidebarVisible: boolean) => void
   setSidebarSide: (sidebarSide: SidebarSide) => void
+  setFontSize: (fontSize: number) => void
   setSettingsOpen: (settingsOpen: boolean) => void
   setPrompt: (prompt: PromptRequest | null) => void
 }
@@ -25,10 +29,12 @@ interface UiState {
 export const useUiStore = create<UiState>()((set) => ({
   sidebarVisible: true,
   sidebarSide: 'left',
+  fontSize: DEFAULT_FONT_SIZE,
   settingsOpen: false,
   prompt: null,
   setSidebarVisible: (sidebarVisible) => set({ sidebarVisible }),
   setSidebarSide: (sidebarSide) => set({ sidebarSide }),
+  setFontSize: (fontSize) => set({ fontSize }),
   setSettingsOpen: (settingsOpen) => set({ settingsOpen }),
   setPrompt: (prompt) => set({ prompt }),
 }))

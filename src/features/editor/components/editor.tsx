@@ -5,12 +5,16 @@ import { useModeStore } from '@/stores/mode-store'
 import { baseExtensions } from '../extensions/base'
 import { bodyStart, frontMatter } from '../extensions/front-matter'
 import { livePreview } from '../extensions/live-preview'
+import { noteTitle } from '../extensions/note-title'
 import { vimBridge } from '../extensions/vim-bridge'
 
 export interface EditorHandle {
   view: EditorView
-  /** 別のメモを読み込む。取り消しの履歴は新しくなる。カーソルはフロントマターの次の行に置く */
-  load: (doc: string) => void
+  /**
+   * 別のメモを読み込む。取り消しの履歴は新しくなる。カーソルはフロントマターの次の行に置く。
+   * title は本文の上に出すメモの名前（null なら出さない）
+   */
+  load: (doc: string, title: string | null) => void
 }
 
 interface EditorProps {
@@ -36,10 +40,14 @@ export function Editor({ extensions, onReady }: EditorProps) {
       livePreview(),
       ...extensions,
     ]
-    const create = (doc: string) =>
-      EditorState.create({ doc, extensions: all, selection: { anchor: bodyStart(doc) } })
-    const view = new EditorView({ parent, state: create('') })
-    onReady({ view, load: (doc) => view.setState(create(doc)) })
+    const create = (doc: string, title: string | null) =>
+      EditorState.create({
+        doc,
+        extensions: [all, noteTitle(title)],
+        selection: { anchor: bodyStart(doc) },
+      })
+    const view = new EditorView({ parent, state: create('', null) })
+    onReady({ view, load: (doc, title) => view.setState(create(doc, title)) })
     return () => {
       onReady(null)
       view.destroy()
