@@ -3,6 +3,7 @@ import { type KeyHint, KeyHints } from '@/components/ui/key-hints'
 import { cn } from '@/lib/cn'
 import type { Editing } from '../extensions/tree-state'
 import type { StrayLine, TreeNode } from '../types/tree'
+import type { Zoom } from '../utils/zoom'
 import { KeyGuide } from './key-guide'
 import type { CommitNext } from './node-editor'
 import { TreeCanvas } from './tree-canvas'
@@ -34,7 +35,7 @@ interface TreeBlockViewProps {
   search: RegExp | null
   editing: Editing | null
   showGuide: boolean
-  zoom: number
+  zoom: Zoom
   onSelectBlock: () => void
   onSelectNode: (path: number[]) => void
   onEditNode: (path: number[]) => void

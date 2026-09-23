@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { DEFAULT_ZOOM, sanitizeZoom, stepZoom, zoomLabel } from './zoom'
+import { DEFAULT_ZOOM, fitZoom, sanitizeZoom, stepZoom, zoomLabel } from './zoom'
 
 describe('sanitizeZoom', () => {
   it('選べる倍率のうち近いものに寄せる', () => {
@@ -19,9 +19,45 @@ describe('stepZoom', () => {
     expect(stepZoom(1, -1)).toBe(0.9)
   })
 
+  it('段の間からは、その向きの次の段へ移る', () => {
+    expect(stepZoom(0.72, 1)).toBe(0.8)
+    expect(stepZoom(0.72, -1)).toBe(0.67)
+    expect(stepZoom(0.3, 1)).toBe(0.5)
+  })
+
   it('端ではそのまま', () => {
     expect(stepZoom(2, 1)).toBe(2)
     expect(stepZoom(0.5, -1)).toBe(0.5)
+  })
+
+  it('段より外からは端の段へ戻す', () => {
+    expect(stepZoom(0.3, -1)).toBe(0.5)
+  })
+})
+
+describe('fitZoom', () => {
+  it('幅だけを見て、はみ出す図を縮める', () => {
+    expect(fitZoom({ width: 1000, height: 5000 }, { width: 600, height: 300 }, 'width')).toBe(0.6)
+  })
+
+  it('両方を見るときは、きつい方に合わせる', () => {
+    expect(fitZoom({ width: 1000, height: 1000 }, { width: 600, height: 300 }, 'both')).toBe(0.3)
+  })
+
+  it('収まる図は大きくしない', () => {
+    expect(fitZoom({ width: 200, height: 100 }, { width: 600, height: 300 }, 'both')).toBe(1)
+  })
+
+  it('小さくしすぎない', () => {
+    expect(fitZoom({ width: 10000, height: 100 }, { width: 600, height: 300 }, 'width')).toBe(0.25)
+  })
+
+  it('切り捨てて、はみ出さないようにする', () => {
+    expect(fitZoom({ width: 300, height: 100 }, { width: 200, height: 300 }, 'width')).toBe(0.66)
+  })
+
+  it('場所を測れないうちは 100% にする', () => {
+    expect(fitZoom({ width: 300, height: 100 }, { width: 0, height: 0 }, 'both')).toBe(1)
   })
 })
 

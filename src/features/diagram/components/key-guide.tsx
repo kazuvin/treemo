@@ -18,6 +18,7 @@ const NORMAL: KeyHint[] = [
   { keys: ['J', 'K'], label: '入れ替え' },
   { keys: ['za'], label: '折りたたみ' },
   { keys: ['+', '-'], label: '拡大縮小' },
+  { keys: ['='], label: '合わせる' },
   { keys: ['F'], label: '全画面' },
   { keys: ['Esc'], label: '出る' },
 ]

@@ -1,10 +1,12 @@
-import { useLayoutEffect, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { cn } from '@/lib/cn'
 import type { Editing } from '../extensions/tree-state'
 import { useTweenedRects } from '../hooks/use-tweened-rects'
+import { useDiagramStore } from '../stores/diagram-store'
 import type { TreeNode } from '../types/tree'
 import { edgePath, layoutTree, type Size } from '../utils/layout'
 import { getNode } from '../utils/ops'
+import { fitZoom, type Zoom } from '../utils/zoom'
 import { InlineContent } from './inline-content'
 import { type CommitNext, NodeEditor } from './node-editor'
 
@@ -55,7 +57,9 @@ interface TreeCanvasProps {
   /** 選んでいるノードの横と下に、ノードを足す印を出すか */
   showGuide: boolean
   /** 図の倍率。ノードの大きさは倍率を掛ける前の値で測り、配置する */
-  zoom?: number
+  zoom?: Zoom
+  /** 'fit' のとき、親の箱のどちらの向きに収めるか */
+  fitAxes?: 'width' | 'both'
   onSelectNode: (path: number[]) => void
   onEditNode: (path: number[]) => void
   onAddNode: (path: number[], where: 'child' | 'sibling') => void
@@ -74,6 +78,7 @@ export function TreeCanvas({
   editing,
   showGuide,
   zoom = 1,
+  fitAxes = 'width',
   onSelectNode,
   onEditNode,
   onAddNode,
@@ -87,6 +92,9 @@ export function TreeCanvas({
   const [editingHasText, setEditingHasText] = useState(false)
   const elements = useRef(new Map<string, HTMLElement>())
   const container = useRef<HTMLDivElement>(null)
+  const outer = useRef<HTMLDivElement>(null)
+  // 'fit' のときに図を収める場所（親の箱の中身の大きさ）。大きさが変わるたびに測り直す
+  const [room, setRoom] = useState<Size | null>(null)
   const editingId = editing?.path.join('.') ?? null
   const sizeKey = (node: TreeNode) => (node.id === editingId ? EDITING_KEY : node.content)
 
@@ -153,23 +161,54 @@ export function TreeCanvas({
     }
   }, [editingId])
 
+  const fitting = zoom === 'fit'
+  useLayoutEffect(() => {
+    const parent = outer.current?.parentElement
+    if (!fitting || !parent) {
+      return
+    }
+    const measure = () => {
+      const style = getComputedStyle(parent)
+      const px = (value: string) => Number.parseFloat(value) || 0
+      setRoom({
+        width: parent.clientWidth - px(style.paddingLeft) - px(style.paddingRight),
+        height: parent.clientHeight - px(style.paddingTop) - px(style.paddingBottom),
+      })
+    }
+    measure()
+    const observer = new ResizeObserver(measure)
+    observer.observe(parent)
+    return () => observer.disconnect()
+  }, [fitting])
+
+  // 右端の列の「子を足す」と、最後のノードの「兄弟を足す」の印の場所を常に空けておく
+  const width = layout.width + LAYOUT.columnGap
+  const height = layout.height + LAYOUT.siblingGap
+  const scale = fitting
+    ? fitZoom({ width, height }, room ?? { width: 0, height: 0 }, fitAxes)
+    : zoom
+
+  const active = selectedId !== null
+  useEffect(() => {
+    if (active && fitting) {
+      useDiagramStore.getState().setFitScale(scale)
+    }
+  }, [active, fitting, scale])
+
   const focusId = selectedId ?? hitId
   useLayoutEffect(() => {
     if (focusId) {
       elements.current.get(focusId)?.scrollIntoView({ block: 'nearest', inline: 'nearest' })
     }
-  }, [focusId, measureTick, zoom])
+  }, [focusId, measureTick, scale])
 
-  // 右端の列の「子を足す」と、最後のノードの「兄弟を足す」の印の場所を常に空けておく
-  const width = layout.width + LAYOUT.columnGap
-  const height = layout.height + LAYOUT.siblingGap
   return (
     // transform は周りの配置に効かないので、外側の箱で倍率を掛けた後の場所を取る
-    <div style={{ width: width * zoom, height: height * zoom }}>
+    <div ref={outer} style={{ width: width * scale, height: height * scale }}>
       <div
         ref={container}
         className="relative origin-top-left"
-        style={{ width, height, transform: zoom === 1 ? undefined : `scale(${zoom})` }}
+        style={{ width, height, transform: scale === 1 ? undefined : `scale(${scale})` }}
       >
         <svg
           className="pointer-events-none absolute inset-0 overflow-visible"

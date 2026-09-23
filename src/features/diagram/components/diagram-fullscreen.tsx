@@ -38,6 +38,7 @@ export function DiagramFullscreen({ view }: { view: EditorView | null }) {
             editing={active.editing}
             showGuide={showGuide}
             zoom={zoom}
+            fitAxes="both"
             onAddNode={(path, where) => addNodeAt(view, active.from, path, where)}
             onSelectNode={(path) => selectNode(view, active.from, path)}
             onEditNode={(path) => {
