@@ -45,7 +45,7 @@ export function useKeyDispatcher(options: KeyDispatcherOptions): void {
       stop(event)
       return
     }
-    const ctx = options.getContext()
+    const ctx = { ...options.getContext(), repeat: event.repeat }
     const candidates = candidatesFor(store.commands, options.getScopes(), ctx)
     const result = resolveKey(candidates, [...pending, token])
     switch (result.kind) {

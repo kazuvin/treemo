@@ -1,19 +1,10 @@
 import { useEffect, useRef } from 'react'
 import { Kbd } from '@/components/ui/kbd'
 import { OverlayPanel } from '@/components/ui/overlay-panel'
-import type { KeyScope } from '@/lib/command'
+import { KEY_SCOPES } from '@/lib/command'
 import { useCommandStore } from '../stores/command-store'
-
-const SCOPE_LABELS: Record<KeyScope, string> = {
-  global: 'どこでも',
-  normal: 'NORMAL（エディタとサイドバー）',
-  editor: 'エディタ',
-  sidebar: 'サイドバー',
-  block: 'ツリーブロックの上',
-  tree: 'TREE モード',
-}
-
-const SCOPE_ORDER: KeyScope[] = ['global', 'normal', 'editor', 'sidebar', 'block', 'tree']
+import { keyLabel } from '../utils/key-label'
+import { SCOPE_LABELS } from '../utils/scope-labels'
 
 /** キー操作の一覧（F-UX-8）。コマンドの登録から作るので、割り当てと食い違わない */
 export function KeyList({ restoreFocus }: { restoreFocus: () => void }) {
@@ -31,6 +22,8 @@ export function KeyList({ restoreFocus }: { restoreFocus: () => void }) {
   if (!open) {
     return null
   }
+  const settingsKey = keyLabel(commands, 'app.settings')
+  const unbound = commands.filter((command) => (command.keys ?? []).length === 0)
   const close = () => {
     setOverlay(null)
     restoreFocus()
@@ -61,9 +54,10 @@ export function KeyList({ restoreFocus }: { restoreFocus: () => void }) {
         }}
       >
         <p className="mb-4 text-xs text-muted-foreground">
-          j / k でスクロール · Esc で閉じる · Vim の標準の操作はそのまま使えます
+          j / k でスクロール · Esc で閉じる · Vim の標準の操作はそのまま使えます · 割り当ては設定
+          {settingsKey ? `（${settingsKey}）` : ''}の「キー」で変えられます
         </p>
-        {SCOPE_ORDER.map((scope) => {
+        {KEY_SCOPES.map((scope) => {
           const rows = commands.flatMap((command) =>
             (command.keys ?? [])
               .filter((key) => key.scope === scope)
@@ -79,13 +73,27 @@ export function KeyList({ restoreFocus }: { restoreFocus: () => void }) {
                 {rows.map(({ id, key, command }) => (
                   <li key={id} className="flex items-center gap-3">
                     <Kbd className="min-w-12 justify-center">{key.sequence}</Kbd>
-                    <span>{command.title}</span>
+                    <span className="min-w-0 flex-1 truncate">{command.title}</span>
+                    <span className="text-2xs text-muted-foreground">{command.id}</span>
                   </li>
                 ))}
               </ul>
             </section>
           )
         })}
+        {unbound.length > 0 && (
+          <section className="mb-6">
+            <h2 className="mb-2 font-semibold">キーの無いコマンド（パレットから呼ぶ）</h2>
+            <ul className="grid grid-cols-[repeat(auto-fill,minmax(300px,1fr))] gap-x-6 gap-y-1">
+              {unbound.map((command) => (
+                <li key={command.id} className="flex items-center gap-3">
+                  <span className="min-w-0 flex-1 truncate">{command.title}</span>
+                  <span className="text-2xs text-muted-foreground">{command.id}</span>
+                </li>
+              ))}
+            </ul>
+          </section>
+        )}
       </div>
     </OverlayPanel>
   )

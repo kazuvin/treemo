@@ -1,4 +1,4 @@
-import { eventToken, formatToken, matchSequence, parseSequence } from './keys'
+import { eventToken, formatSequence, formatToken, matchSequence, parseSequence } from './keys'
 
 describe('parseSequence', () => {
   it.each([
@@ -62,4 +62,13 @@ describe('formatToken', () => {
     expect(formatToken('Space')).toBe('<Space>')
     expect(formatToken('f')).toBe('f')
   })
+})
+
+describe('formatSequence', () => {
+  it.each(['<C-w>h', '<Space>ff', 'dd', '⌘K', 'Enter', 'Esc', '⇧Enter', 'gg', '<C-h>', '<M-l>'])(
+    '%s を parseSequence と行き来できる',
+    (sequence) => {
+      expect(formatSequence(parseSequence(sequence))).toBe(sequence)
+    },
+  )
 })

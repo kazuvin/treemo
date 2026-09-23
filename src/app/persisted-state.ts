@@ -15,6 +15,7 @@ const schema = z.object({
   lastVault: z.string().nullable().default(null),
   lastNote: z.record(z.string(), z.string()).default({}),
   sidebarVisible: z.boolean().default(true),
+  sidebarSide: z.enum(['left', 'right']).catch('left'),
   preferFullscreen: z.boolean().default(false),
   showKeyGuide: z.boolean().default(true),
   // 消したテーマが残っていても、状態の全体を捨てずに既定へ戻す

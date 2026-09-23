@@ -67,7 +67,7 @@ src-tauri/
 ├── src/
 │   ├── main.rs          起動するだけ
 │   ├── lib.rs           Tauri の Builder。コマンドとプラグインの登録
-│   ├── app_state.rs     アプリの状態（Application Support の state.json）
+│   ├── app_state.rs     アプリの状態とキーの割り当て（Application Support の state.json・keybindings.json）
 │   └── vault/
 │       ├── mod.rs       開いている保管庫の状態
 │       ├── commands.rs  #[tauri::command]。薄く保つ

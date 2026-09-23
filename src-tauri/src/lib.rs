@@ -27,6 +27,9 @@ pub fn run() {
             vault::commands::note_trash,
             app_state::app_state_read,
             app_state::app_state_write,
+            app_state::keybindings_read,
+            app_state::keybindings_open,
+            app_state::keybindings_write,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

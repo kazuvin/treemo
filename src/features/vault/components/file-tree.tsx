@@ -4,11 +4,13 @@ import { visibleRows } from '../utils/file-tree'
 
 interface FileTreeProps {
   focused: boolean
+  /** 一覧が空のときに添える案内（「⌘N で作る」など）。キーは app が今の割り当てから作る */
+  emptyHint: string | null
   onOpen: (path: string) => void
 }
 
 /** サイドバーのファイル一覧（F-VAULT-2）。キーは app が登録したコマンドで動く */
-export function FileTree({ focused, onOpen }: FileTreeProps) {
+export function FileTree({ focused, emptyHint, onOpen }: FileTreeProps) {
   const entries = useVaultStore((s) => s.entries)
   const expanded = useVaultStore((s) => s.expanded)
   const cursor = useVaultStore((s) => s.cursor)
@@ -19,7 +21,9 @@ export function FileTree({ focused, onOpen }: FileTreeProps) {
 
   if (rows.length === 0) {
     return (
-      <p className="px-4 py-2 text-sm text-muted-foreground">メモはまだありません · ⌘N で作る</p>
+      <p className="px-4 py-2 text-sm text-muted-foreground">
+        {emptyHint ? `メモはまだありません · ${emptyHint}` : 'メモはまだありません'}
+      </p>
     )
   }
   return (

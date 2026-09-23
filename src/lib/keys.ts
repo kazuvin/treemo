@@ -94,6 +94,20 @@ export function matchSequence(buffer: readonly string[], target: readonly string
   return buffer.length === target.length ? 'exact' : 'prefix'
 }
 
+/** トークン列を表記（docs/keybindings.md）に戻す。parseSequence の逆 */
+export function formatSequence(tokens: readonly string[]): string {
+  const [first] = tokens
+  if (tokens.length === 1 && first) {
+    if (WHOLE_SEQUENCE_KEYS.has(first)) {
+      return first
+    }
+    if (first.startsWith('S-') && WHOLE_SEQUENCE_KEYS.has(first.slice(2))) {
+      return `⇧${first.slice(2)}`
+    }
+  }
+  return tokens.map(formatToken).join('')
+}
+
 /** トークンを画面に出す形へ戻す（which-key の「次のキー」など） */
 export function formatToken(token: string): string {
   if (token.startsWith('D-')) {

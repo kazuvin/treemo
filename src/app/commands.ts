@@ -1,17 +1,24 @@
 import { open } from '@tauri-apps/plugin-dialog'
 import { useCommandStore } from '@/features/commands/stores/command-store'
+import {
+  applyKeyOverrides,
+  diffKeyOverrides,
+  type KeyOverrides,
+  parseKeyOverrides,
+} from '@/features/commands/utils/key-overrides'
 import { editorCommands } from '@/features/editor/commands'
 import { treeCommands } from '@/features/tree/commands'
 import { useTreeStore } from '@/features/tree/stores/tree-store'
 import { vaultDefaultDir } from '@/features/vault/api/vault'
 import { useVaultStore } from '@/features/vault/stores/vault-store'
 import { displayName, parentDir, toNotePath, visibleRows } from '@/features/vault/utils/file-tree'
-import type { Command } from '@/lib/command'
+import type { Command, CommandContext } from '@/lib/command'
 import { THEMES } from '@/lib/theme'
 import { useModeStore } from '@/stores/mode-store'
 import { useStatusStore } from '@/stores/status-store'
 import { useThemeStore } from '@/stores/theme-store'
 import { focusEditor, focusSidebar, rememberFocus } from './focus'
+import { openKeybindings, readKeybindings, writeKeybindings } from './keybindings'
 import { notes } from './note-controller'
 import { useUiStore } from './ui-store'
 
@@ -119,14 +126,15 @@ function sidebarCommand(id: string, title: string, sequences: string[], run: () 
   }
 }
 
-function openCursor(): void {
+/** メモなら開く。フォルダは toggle なら開閉を入れ替え、そうでなければ開く */
+function openCursor(toggle: boolean): void {
   const vault = useVaultStore.getState()
   const row = visibleRows(vault.entries, vault.expanded).find((r) => r.path === vault.cursor)
   if (!row) {
     return
   }
   if (row.kind === 'dir') {
-    vault.toggleDir(row.path, true)
+    vault.toggleDir(row.path, toggle ? !row.expanded : true)
   } else {
     void notes.openNote(row.path)
   }
@@ -142,7 +150,50 @@ function closeCursor(): void {
     vault.toggleDir(row.path, false)
   } else if (parentDir(row.path)) {
     vault.setCursor(parentDir(row.path))
+  } else if (useUiStore.getState().sidebarSide === 'right') {
+    // 右のサイドバーでは h が本文の向き。閉じるものも親も無ければ本文へ移る
+    focusEditor()
   }
+}
+
+type Direction = 'left' | 'right'
+
+/** 今フォーカスのある領域から見て、その向きにある領域へ移る関数。何も無ければ null */
+function paneToward(direction: Direction): (() => void) | null {
+  const focus = useModeStore.getState().focus
+  const sidebarOnLeft = useUiStore.getState().sidebarSide === 'left'
+  const towardSidebar = sidebarOnLeft ? 'left' : 'right'
+  if (focus === 'editor' && direction === towardSidebar) {
+    return focusSidebar
+  }
+  if (focus === 'sidebar' && direction !== towardSidebar) {
+    return focusEditor
+  }
+  return null
+}
+
+/**
+ * 本文の行頭で h（行末で l）を押したとき、その先にサイドバーがあれば移る。
+ * 押し続けて行頭を行き過ぎたときに移らないよう、自動の繰り返しでは効かせない。
+ */
+function atEdgeToward(direction: Direction, ctx: CommandContext): boolean {
+  const ui = useUiStore.getState()
+  if (ctx.repeat || !ctx.view || !ui.sidebarVisible || paneToward(direction) !== focusSidebar) {
+    return false
+  }
+  const head = ctx.view.state.selection.main.head
+  const line = ctx.view.state.doc.lineAt(head)
+  return direction === 'left' ? head === line.from : head >= Math.max(line.from, line.to - 1)
+}
+
+function openSettings(): void {
+  const ui = useUiStore.getState()
+  if (ui.settingsOpen) {
+    ui.setSettingsOpen(false)
+    return
+  }
+  rememberFocus()
+  ui.setSettingsOpen(true)
 }
 
 const hasVault = () => useVaultStore.getState().vault !== null
@@ -246,9 +297,36 @@ const appCommands: Command[] = [
   },
   {
     id: 'app.settings',
-    title: '保管庫を選び直す（設定）',
+    title: '設定',
     keys: [{ scope: 'global', sequence: '⌘,' }],
+    run: openSettings,
+  },
+  {
+    id: 'vault.pick',
+    title: '保管庫を選び直す',
     run: () => void pickVault(),
+  },
+  {
+    id: 'app.toggleSidebarSide',
+    title: 'サイドバーを左右に置き換える',
+    run: () => {
+      const ui = useUiStore.getState()
+      ui.setSidebarSide(ui.sidebarSide === 'left' ? 'right' : 'left')
+    },
+  },
+  {
+    id: 'app.editKeybindings',
+    title: 'キーの割り当てを変える（keybindings.json を開く）',
+    run: () =>
+      void openKeybindings().catch((error: unknown) => {
+        console.error('keybindings.json を開けませんでした', error)
+        useStatusStore.getState().show('keybindings.json を開けませんでした')
+      }),
+  },
+  {
+    id: 'app.reloadKeybindings',
+    title: 'キーの割り当てを読み直す',
+    run: () => void loadKeybindings(true),
   },
   {
     id: 'app.hints',
@@ -259,20 +337,42 @@ const appCommands: Command[] = [
   {
     id: 'app.focusSidebar',
     title: 'サイドバーへ移る',
-    keys: [
-      { scope: 'normal', sequence: '<Space>e' },
-      { scope: 'normal', sequence: '<C-w>h' },
-    ],
+    keys: [{ scope: 'normal', sequence: '<Space>e' }],
     run: focusSidebar,
   },
   {
     id: 'app.focusEditor',
     title: 'エディタへ移る',
-    keys: [
-      { scope: 'normal', sequence: '<C-w>l' },
-      { scope: 'sidebar', sequence: 'Esc' },
-    ],
+    keys: [{ scope: 'sidebar', sequence: 'Esc' }],
     run: focusEditor,
+  },
+  {
+    id: 'app.focusLeft',
+    title: '左の領域へ移る',
+    keys: [{ scope: 'normal', sequence: '<C-w>h' }],
+    when: () => paneToward('left') !== null,
+    run: () => paneToward('left')?.(),
+  },
+  {
+    id: 'app.focusRight',
+    title: '右の領域へ移る',
+    keys: [{ scope: 'normal', sequence: '<C-w>l' }],
+    when: () => paneToward('right') !== null,
+    run: () => paneToward('right')?.(),
+  },
+  {
+    id: 'app.edgeLeft',
+    title: '行頭から左のサイドバーへ移る',
+    keys: [{ scope: 'normal', sequence: 'h' }],
+    when: (ctx) => atEdgeToward('left', ctx),
+    run: focusSidebar,
+  },
+  {
+    id: 'app.edgeRight',
+    title: '行末から右のサイドバーへ移る',
+    keys: [{ scope: 'normal', sequence: 'l' }],
+    when: (ctx) => atEdgeToward('right', ctx),
+    run: focusSidebar,
   },
   {
     id: 'tree.toggleKeyGuide',
@@ -292,7 +392,10 @@ const appCommands: Command[] = [
   },
   sidebarCommand('sidebar.down', '次の項目へ', ['j'], () => useVaultStore.getState().moveCursor(1)),
   sidebarCommand('sidebar.up', '前の項目へ', ['k'], () => useVaultStore.getState().moveCursor(-1)),
-  sidebarCommand('sidebar.open', 'フォルダを開く / メモを開く', ['l', 'Enter'], openCursor),
+  sidebarCommand('sidebar.open', 'フォルダを開く / メモを開く', ['l'], () => openCursor(false)),
+  sidebarCommand('sidebar.toggle', 'フォルダを開閉する / メモを開く', ['Enter'], () =>
+    openCursor(true),
+  ),
   sidebarCommand('sidebar.close', 'フォルダを閉じる / 親へ', ['h'], closeCursor),
   sidebarCommand('sidebar.first', '最初の項目へ', ['gg'], () =>
     useVaultStore.getState().moveCursor(-Infinity),
@@ -309,11 +412,79 @@ const themeCommands: Command[] = THEMES.map((theme) => ({
   run: () => useThemeStore.getState().setTheme(theme.id),
 }))
 
-export function registerCommands(): void {
-  useCommandStore
-    .getState()
-    .register([...appCommands, ...themeCommands, ...editorCommands, ...treeCommands], {
-      f: 'ファイル',
-      t: 'ツリー',
-    })
+/** 上書きを重ねる前の、既定の割り当てのコマンド */
+export const defaultCommands: readonly Command[] = [
+  ...appCommands,
+  ...themeCommands,
+  ...editorCommands,
+  ...treeCommands,
+]
+
+let keyOverrides: KeyOverrides = {}
+
+export function currentKeyOverrides(): KeyOverrides {
+  return keyOverrides
+}
+
+function registerCommands(overrides: KeyOverrides): string[] {
+  keyOverrides = overrides
+  const { commands, unknown } = applyKeyOverrides(defaultCommands, overrides)
+  useCommandStore.getState().register(commands, { f: 'ファイル', t: 'ツリー' })
+  return unknown
+}
+
+export function registerDefaultCommands(): void {
+  registerCommands({})
+}
+
+let lastKeybindings: string | null | undefined
+
+/**
+ * keybindings.json を読み、コマンドの割り当てに重ねて登録し直す。前に読んだものと同じなら
+ * 何もしない（ウィンドウに戻るたびに呼ぶため）。読めなければ今の割り当てを残す。
+ */
+export async function loadKeybindings(force = false): Promise<void> {
+  let json: string | null
+  try {
+    json = await readKeybindings()
+  } catch (error) {
+    console.error('keybindings.json を読めませんでした', error)
+    return
+  }
+  if (!force && json === lastKeybindings) {
+    return
+  }
+  lastKeybindings = json
+  const status = useStatusStore.getState()
+  const parsed = json ? parseKeyOverrides(json) : { ok: true as const, overrides: {} }
+  if (!parsed.ok) {
+    console.error('keybindings.json を読めませんでした', parsed.error)
+    status.show(`keybindings.json を読めませんでした · ${parsed.error}`)
+    return
+  }
+  const unknown = registerCommands(parsed.overrides)
+  if (unknown.length > 0) {
+    status.show(`keybindings.json に無いコマンドがあります · ${unknown.join(', ')}`)
+  } else if (force) {
+    status.show('キーの割り当てを読み直しました')
+  }
+}
+
+/**
+ * 設定画面で変えた割り当てを keybindings.json に書き、すぐに効かせる。
+ * 既定のコマンドに無い ID（手で書いたもの）は消さずに残す。
+ */
+export async function saveKeyOverrides(edited: KeyOverrides): Promise<void> {
+  const known = new Set(defaultCommands.map((c) => c.id))
+  const kept = Object.fromEntries(Object.entries(keyOverrides).filter(([id]) => !known.has(id)))
+  const next = { ...kept, ...diffKeyOverrides(defaultCommands, edited) }
+  registerCommands(next)
+  const json = `${JSON.stringify(next, null, 2)}\n`
+  lastKeybindings = json
+  try {
+    await writeKeybindings(json)
+  } catch (error) {
+    console.error('keybindings.json に書けませんでした', error)
+    useStatusStore.getState().show('キーの割り当てを保存できませんでした')
+  }
 }

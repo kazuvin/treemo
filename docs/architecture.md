@@ -88,6 +88,8 @@ Treemo をどう組み立てるか。何を作るかは [要件定義](requireme
 | アプリの状態の保存（最後の保管庫、折りたたみなど） | `src/app/persisted-state.ts` → Rust の `app_state_read` / `app_state_write` | 保管庫の外（Application Support）に JSON で置く |
 | 開いている保管庫、ファイル一覧、開いているメモのパス | `features/vault/stores/` | vault の中で閉じる |
 | コマンドの登録、キーの割り当て | `features/commands/` | 下の「コマンド」 |
+| キーの割り当ての上書き | Application Support の `keybindings.json` → Rust の `keybindings_read` / `keybindings_write`。`src/app/commands.ts` が既定の登録に重ねる | 手で書いても設定画面から書いてもよい。アプリが書くのは既定との差分だけ（[キー操作](keybindings.md) の「割り当てを変える」） |
+| サイドバーの位置（左右）、設定画面を開いているか | `src/app/ui-store.ts`（位置はアプリの状態として保存） | レイアウトと、向きで指すキー（`<C-w>h` など）の行き先を決める |
 
 ## コマンド
 

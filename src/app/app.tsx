@@ -1,4 +1,5 @@
 import { useEffect, useState, useSyncExternalStore } from 'react'
+import { SidebarKeyGuide } from '@/components/layouts/sidebar-key-guide'
 import { StatusBar } from '@/components/layouts/status-bar'
 import { PromptDialog } from '@/components/ui/prompt-dialog'
 import { CommandPalette } from '@/features/commands/components/command-palette'
@@ -6,6 +7,8 @@ import { Hints } from '@/features/commands/components/hints'
 import { KeyList } from '@/features/commands/components/key-list'
 import { WhichKey } from '@/features/commands/components/which-key'
 import { useKeyDispatcher } from '@/features/commands/hooks/use-key-dispatcher'
+import { useCommandStore } from '@/features/commands/stores/command-store'
+import { keyLabel } from '@/features/commands/utils/key-label'
 import { Editor, type EditorHandle } from '@/features/editor/components/editor'
 import { setExHandlers } from '@/features/editor/extensions/vim-bridge'
 import { TreeFullscreen } from '@/features/tree/components/tree-fullscreen'
@@ -22,12 +25,13 @@ import { cn } from '@/lib/cn'
 import { applyTheme } from '@/lib/theme'
 import { useModeStore } from '@/stores/mode-store'
 import { useThemeStore } from '@/stores/theme-store'
-import { pickVault, registerCommands } from './commands'
+import { loadKeybindings, pickVault, registerDefaultCommands } from './commands'
 import { focusEditor, restoreFocus, trackFocus } from './focus'
 import { clearStatusMessage, getContext, getScopes, replayKeys, swallowKey } from './keys'
 import { notes } from './note-controller'
 import { loadPersistedState, updatePersistedState } from './persisted-state'
-import { useUiStore } from './ui-store'
+import { SettingsScreen } from './settings-screen'
+import { type SidebarSide, useUiStore } from './ui-store'
 
 /** Editor に渡す拡張。作り直すとエディタごと作り直しになるので、ここで 1 度だけ作る */
 const editorExtensions = [treeExtension(), notes.extension]
@@ -63,9 +67,17 @@ function useEditorView(): EditorHandle['view'] | null {
   return useSyncExternalStore(subscribeEditorView, () => editorView)
 }
 
+function gridColumns(sidebarVisible: boolean, side: SidebarSide): string {
+  if (!sidebarVisible) {
+    return 'minmax(0, 1fr)'
+  }
+  return side === 'left' ? '240px minmax(0, 1fr)' : 'minmax(0, 1fr) 240px'
+}
+
 async function boot(): Promise<void> {
   const state = await loadPersistedState()
   useUiStore.getState().setSidebarVisible(state.sidebarVisible)
+  useUiStore.getState().setSidebarSide(state.sidebarSide)
   useTreeStore.getState().setPreferFullscreen(state.preferFullscreen)
   useTreeStore.getState().setShowKeyGuide(state.showKeyGuide)
   useThemeStore.getState().setTheme(state.theme)
@@ -77,8 +89,12 @@ async function boot(): Promise<void> {
     }
   })
   useUiStore.subscribe((ui, prev) => {
-    if (ui.sidebarVisible !== prev.sidebarVisible) {
-      updatePersistedState((s) => ({ ...s, sidebarVisible: ui.sidebarVisible }))
+    if (ui.sidebarVisible !== prev.sidebarVisible || ui.sidebarSide !== prev.sidebarSide) {
+      updatePersistedState((s) => ({
+        ...s,
+        sidebarVisible: ui.sidebarVisible,
+        sidebarSide: ui.sidebarSide,
+      }))
     }
   })
   useTreeStore.subscribe((tree, prev) => {
@@ -93,6 +109,7 @@ async function boot(): Promise<void> {
       }))
     }
   })
+  await loadKeybindings()
   if (state.lastVault) {
     await notes.openVault(state.lastVault)
   }
@@ -104,9 +121,16 @@ export function App() {
   const openPath = useVaultStore((s) => s.openPath)
   const switcherOpen = useVaultStore((s) => s.switcherOpen)
   const sidebarVisible = useUiStore((s) => s.sidebarVisible)
+  const sidebarSide = useUiStore((s) => s.sidebarSide)
+  const settingsOpen = useUiStore((s) => s.settingsOpen)
   const prompt = useUiStore((s) => s.prompt)
   const focus = useModeStore((s) => s.focus)
+  const commands = useCommandStore((s) => s.commands)
   const view = useEditorView()
+  const hint = (id: string, label: string) => {
+    const key = keyLabel(commands, id)
+    return key ? `${key} で${label}` : null
+  }
 
   useKeyDispatcher({
     getScopes,
@@ -117,7 +141,7 @@ export function App() {
   })
 
   useEffect(() => {
-    registerCommands()
+    registerDefaultCommands()
     setExHandlers({ write: () => void notes.flush(), edit: openByName })
     void boot().finally(() => setReady(true))
     const unlisten = onVaultChanged((paths) => void notes.onVaultChanged(paths)).catch(
@@ -127,10 +151,14 @@ export function App() {
       },
     )
     const onBlur = () => void notes.flush()
+    // keybindings.json は外のエディタで書くので、戻ってきたときに読み直す
+    const onFocus = () => void loadKeybindings()
     window.addEventListener('blur', onBlur)
+    window.addEventListener('focus', onFocus)
     return () => {
       setExHandlers(null)
       window.removeEventListener('blur', onBlur)
+      window.removeEventListener('focus', onFocus)
       void unlisten.then((stop) => stop())
     }
   }, [])
@@ -142,7 +170,7 @@ export function App() {
     >
       <div
         className="grid min-h-0"
-        style={{ gridTemplateColumns: sidebarVisible ? '240px minmax(0, 1fr)' : 'minmax(0, 1fr)' }}
+        style={{ gridTemplateColumns: gridColumns(sidebarVisible, sidebarSide) }}
       >
         {sidebarVisible && (
           <aside
@@ -151,7 +179,10 @@ export function App() {
             // oxlint-disable-next-line jsx-a11y/no-noninteractive-tabindex -- 上のとおり
             tabIndex={0}
             aria-label="サイドバー"
-            className="relative flex min-h-0 flex-col border-r border-border"
+            className={cn(
+              'relative flex min-h-0 flex-col border-border',
+              sidebarSide === 'left' ? 'border-r' : 'order-last border-l',
+            )}
             // globals.css のフォーカスリングはレイヤーの外にあり、クラスでは消せない。領域のフォーカスは上端の線で示す
             style={{ outline: 'none' }}
           >
@@ -162,9 +193,11 @@ export function App() {
             <div className="min-h-0 flex-1 overflow-y-auto">
               <FileTree
                 focused={focus === 'sidebar'}
+                emptyHint={hint('vault.newNote', '作る')}
                 onOpen={(path) => void notes.openNote(path)}
               />
             </div>
+            {focus === 'sidebar' && <SidebarKeyGuide />}
           </aside>
         )}
         <main data-editor-pane="" className="relative flex min-h-0 flex-col">
@@ -178,7 +211,17 @@ export function App() {
           </div>
           {!openPath && vault && (
             <div className="absolute inset-0 grid place-items-center text-muted-foreground">
-              <p>メモを開いていません · ⌘P で開く · ⌘N で作る · ⌘/ でキー操作の一覧</p>
+              <p>
+                {[
+                  'メモを開いていません',
+                  hint('vault.switcher', '開く'),
+                  hint('vault.newNote', '作る'),
+                  hint('app.focusSidebar', 'サイドバーへ'),
+                  hint('app.keyList', 'キー操作の一覧'),
+                ]
+                  .filter(Boolean)
+                  .join(' · ')}
+              </p>
             </div>
           )}
           <TreeFullscreen view={view} />
@@ -210,6 +253,14 @@ export function App() {
           }}
           onCancel={() => {
             useUiStore.getState().setPrompt(null)
+            restoreFocus()
+          }}
+        />
+      )}
+      {settingsOpen && (
+        <SettingsScreen
+          onClose={() => {
+            useUiStore.getState().setSettingsOpen(false)
             restoreFocus()
           }}
         />

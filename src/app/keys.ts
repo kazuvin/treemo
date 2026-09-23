@@ -42,13 +42,14 @@ export function getContext(): CommandContext {
 /** 今どの範囲のキーが効くか（docs/keybindings.md の「コマンドとキーの範囲」） */
 export function getScopes(): KeyScope[] {
   const commands = useCommandStore.getState()
-  if (commands.hintTarget) {
+  if (commands.hintTarget || commands.recording) {
     return []
   }
   const scopes: KeyScope[] = ['global']
   const overlayOpen =
     commands.overlay !== null ||
     useUiStore.getState().prompt !== null ||
+    useUiStore.getState().settingsOpen ||
     useVaultStore.getState().switcherOpen ||
     useVaultStore.getState().vault === null
   if (overlayOpen || isTextInput(document.activeElement)) {
