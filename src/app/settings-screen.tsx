@@ -1,6 +1,7 @@
 import { type KeyboardEvent, useEffect, useRef, useState } from 'react'
 import { Kbd } from '@/components/ui/kbd'
 import { OverlayPanel } from '@/components/ui/overlay-panel'
+import { Select } from '@/components/ui/select'
 import { KeybindingEditor } from '@/features/commands/components/keybinding-editor'
 import { useTreeStore } from '@/features/tree/stores/tree-store'
 import { useVaultStore } from '@/features/vault/stores/vault-store'
@@ -23,6 +24,8 @@ interface Item {
   label: string
   /** 選べる値。action の項目は持たない */
   options?: { label: string; selected: boolean; select: () => void }[]
+  /** 値をボタンで並べずセレクタで選ぶ。Enter で開く */
+  dropdown?: boolean
   /** Enter で走らせる操作と、その説明 */
   action?: { label: string; run: () => void }
 }
@@ -34,6 +37,7 @@ function cycle(options: NonNullable<Item['options']>, delta: 1 | -1): void {
 
 function GeneralSettings({ onClose }: { onClose: () => void }) {
   const [cursor, setCursor] = useState(0)
+  const [openSelect, setOpenSelect] = useState<string | null>(null)
   const rootRef = useRef<HTMLDivElement>(null)
   const sidebarSide = useUiStore((s) => s.sidebarSide)
   const setSidebarSide = useUiStore((s) => s.setSidebarSide)
@@ -58,6 +62,7 @@ function GeneralSettings({ onClose }: { onClose: () => void }) {
     },
     {
       label: '文字の大きさ',
+      dropdown: true,
       options: FONT_SIZES.map((size) => ({
         label: size === DEFAULT_FONT_SIZE ? `${size}px（既定）` : `${size}px`,
         selected: fontSize === size,
@@ -113,13 +118,21 @@ function GeneralSettings({ onClose }: { onClose: () => void }) {
         break
       case 'l':
       case 'ArrowRight':
-      case ' ':
         if (item.options) {
           cycle(item.options, 1)
         }
         break
+      case ' ':
+        if (item.dropdown) {
+          setOpenSelect(item.label)
+        } else if (item.options) {
+          cycle(item.options, 1)
+        }
+        break
       case 'Enter':
-        if (item.options) {
+        if (item.dropdown) {
+          setOpenSelect(item.label)
+        } else if (item.options) {
           cycle(item.options, 1)
         } else {
           item.action?.run()
@@ -151,7 +164,26 @@ function GeneralSettings({ onClose }: { onClose: () => void }) {
             )}
           >
             <span>{item.label}</span>
-            {item.options && (
+            {item.options && item.dropdown && (
+              <Select
+                label={item.label}
+                options={item.options.map((option, index) => ({
+                  value: index,
+                  label: option.label,
+                }))}
+                value={item.options.findIndex((option) => option.selected)}
+                onChange={(index) => item.options?.[index]?.select()}
+                open={openSelect === item.label}
+                onOpenChange={(open) => {
+                  setCursor(i)
+                  setOpenSelect(open ? item.label : null)
+                  if (!open) {
+                    rootRef.current?.focus()
+                  }
+                }}
+              />
+            )}
+            {item.options && !item.dropdown && (
               <span className="flex items-center gap-1">
                 {item.options.map((option) => (
                   <button
@@ -185,7 +217,7 @@ function GeneralSettings({ onClose }: { onClose: () => void }) {
         ))}
       </ul>
       <p className="border-t border-border-hairline px-5 py-2 text-2xs text-muted-foreground">
-        j k 移動 · h l 値を変える · Enter 決める
+        j k 移動 · h l 値を変える · Enter 決める / 一覧を開く
       </p>
     </div>
   )

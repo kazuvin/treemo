@@ -26,6 +26,7 @@ import { VaultPicker } from '@/features/vault/components/vault-picker'
 import { useVaultStore } from '@/features/vault/stores/vault-store'
 import { toNotePath } from '@/features/vault/utils/file-tree'
 import { cn } from '@/lib/cn'
+import { applyFontFamily, sanitizeFontFamily } from '@/lib/font-family'
 import { applyFontSize, sanitizeFontSize } from '@/lib/font-size'
 import { applyTheme, resolveTheme, sanitizeCustomThemes } from '@/lib/theme'
 import { useModeStore } from '@/stores/mode-store'
@@ -116,6 +117,8 @@ async function boot(): Promise<void> {
   useUiStore.getState().setSidebarSide(state.sidebarSide)
   useUiStore.getState().setFontSize(sanitizeFontSize(state.fontSize))
   applyFontSize(useUiStore.getState().fontSize)
+  useUiStore.getState().setFontFamily(sanitizeFontFamily(state.fontFamily))
+  applyFontFamily(useUiStore.getState().fontFamily)
   useTreeStore.getState().setPreferFullscreen(state.preferFullscreen)
   useTreeStore.getState().setShowKeyGuide(state.showKeyGuide)
   const customThemes = sanitizeCustomThemes(state.customThemes)
@@ -142,16 +145,21 @@ async function boot(): Promise<void> {
     if (ui.fontSize !== prev.fontSize) {
       applyFontSize(ui.fontSize)
     }
+    if (ui.fontFamily !== prev.fontFamily) {
+      applyFontFamily(ui.fontFamily)
+    }
     if (
       ui.sidebarVisible !== prev.sidebarVisible ||
       ui.sidebarSide !== prev.sidebarSide ||
-      ui.fontSize !== prev.fontSize
+      ui.fontSize !== prev.fontSize ||
+      ui.fontFamily !== prev.fontFamily
     ) {
       updatePersistedState((s) => ({
         ...s,
         sidebarVisible: ui.sidebarVisible,
         sidebarSide: ui.sidebarSide,
         fontSize: ui.fontSize,
+        fontFamily: ui.fontFamily,
       }))
     }
   })

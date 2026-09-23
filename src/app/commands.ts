@@ -14,6 +14,7 @@ import { useVaultStore } from '@/features/vault/stores/vault-store'
 import { displayName, parentDir, toNotePath, visibleRows } from '@/features/vault/utils/file-tree'
 import { buildTagIndex } from '@/features/vault/utils/tag-index'
 import type { Command, CommandContext } from '@/lib/command'
+import { FONT_FAMILIES } from '@/lib/font-family'
 import { DEFAULT_FONT_SIZE, stepFontSize } from '@/lib/font-size'
 import { THEMES } from '@/lib/theme'
 import { useModeStore } from '@/stores/mode-store'
@@ -488,10 +489,18 @@ const themeCommands: Command[] = THEMES.map((theme) => ({
   run: () => useThemeStore.getState().setTheme(theme.id),
 }))
 
+const fontFamilyCommands: Command[] = FONT_FAMILIES.map((font) => ({
+  id: `app.fontFamily.${font.id}`,
+  title: `書体: ${font.label}`,
+  when: () => useUiStore.getState().fontFamily !== font.id,
+  run: () => useUiStore.getState().setFontFamily(font.id),
+}))
+
 /** 上書きを重ねる前の、既定の割り当てのコマンド */
 export const defaultCommands: readonly Command[] = [
   ...appCommands,
   ...themeCommands,
+  ...fontFamilyCommands,
   ...editorCommands,
   ...treeCommands,
 ]

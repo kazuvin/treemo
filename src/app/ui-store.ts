@@ -1,4 +1,5 @@
 import { create } from 'zustand'
+import { DEFAULT_FONT_FAMILY, type FontFamilyId } from '@/lib/font-family'
 import { DEFAULT_FONT_SIZE } from '@/lib/font-size'
 
 interface PromptRequest {
@@ -17,11 +18,13 @@ interface UiState {
   sidebarSide: SidebarSide
   /** 本文の文字の大きさ（px）。ほかの文字もこれに比例する */
   fontSize: number
+  fontFamily: FontFamilyId
   settingsOpen: boolean
   prompt: PromptRequest | null
   setSidebarVisible: (sidebarVisible: boolean) => void
   setSidebarSide: (sidebarSide: SidebarSide) => void
   setFontSize: (fontSize: number) => void
+  setFontFamily: (fontFamily: FontFamilyId) => void
   setSettingsOpen: (settingsOpen: boolean) => void
   setPrompt: (prompt: PromptRequest | null) => void
 }
@@ -30,11 +33,13 @@ export const useUiStore = create<UiState>()((set) => ({
   sidebarVisible: true,
   sidebarSide: 'left',
   fontSize: DEFAULT_FONT_SIZE,
+  fontFamily: DEFAULT_FONT_FAMILY,
   settingsOpen: false,
   prompt: null,
   setSidebarVisible: (sidebarVisible) => set({ sidebarVisible }),
   setSidebarSide: (sidebarSide) => set({ sidebarSide }),
   setFontSize: (fontSize) => set({ fontSize }),
+  setFontFamily: (fontFamily) => set({ fontFamily }),
   setSettingsOpen: (settingsOpen) => set({ settingsOpen }),
   setPrompt: (prompt) => set({ prompt }),
 }))

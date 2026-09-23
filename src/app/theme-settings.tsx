@@ -1,5 +1,7 @@
 import { type KeyboardEvent, useEffect, useRef, useState } from 'react'
+import { Select } from '@/components/ui/select'
 import { cn } from '@/lib/cn'
+import { FONT_FAMILIES } from '@/lib/font-family'
 import {
   type ColorToken,
   isHex,
@@ -15,10 +17,17 @@ import {
   wouldResolve,
 } from '@/lib/theme'
 import { useThemeStore } from '@/stores/theme-store'
+import { useUiStore } from './ui-store'
 
 const GRID_COLUMNS = 6
 
 const TOKENS: ColorToken[] = TOKEN_GROUPS.flatMap((g) => g.tokens)
+
+const FONT_OPTIONS = FONT_FAMILIES.map((f) => ({
+  value: f.id,
+  label: f.label,
+  style: { fontFamily: f.stack },
+}))
 
 function isPaletteToken(token: ColorToken): token is PaletteToken {
   return (PALETTE_TOKENS as readonly string[]).includes(token)
@@ -129,7 +138,7 @@ function ThemeTile({
 }
 
 /**
- * 設定画面の「テーマ」。上でプリセットを選び、下で色のトークンを 1 つずつ変える。
+ * 設定画面の「テーマ」。上でプリセットを選び、その下で書体を、下で色のトークンを 1 つずつ変える。
  * 組み込みのプリセットで色を変えると、写したカスタムができてそちらを変える。
  */
 export function ThemeSettings() {
@@ -140,6 +149,9 @@ export function ThemeSettings() {
   const duplicateTheme = useThemeStore((s) => s.duplicateTheme)
   const renameCustom = useThemeStore((s) => s.renameCustom)
   const deleteCustom = useThemeStore((s) => s.deleteCustom)
+  const fontFamily = useUiStore((s) => s.fontFamily)
+  const setFontFamily = useUiStore((s) => s.setFontFamily)
+  const [fontOpen, setFontOpen] = useState(false)
   const [cursor, setCursor] = useState(() => {
     const index = [...THEMES.map((t) => t.id), ...customThemes.map((c) => c.id)].indexOf(themeId)
     return Math.max(index, 0)
@@ -158,10 +170,15 @@ export function ThemeSettings() {
   ]
   /** グリッドの升の数。最後の 1 つは「カスタムを作る」 */
   const gridSize = presets.length + 1
-  const at = Math.min(cursor, gridSize + TOKENS.length - 1)
+  /** グリッドの次の行は書体。トークンはその下から */
+  const fontIndex = gridSize
+  const tokenStart = fontIndex + 1
+  const last = tokenStart + TOKENS.length - 1
+  const at = Math.min(cursor, last)
   const inGrid = at < gridSize
+  const onFont = at === fontIndex
   const preset = inGrid ? presets[at] : undefined
-  const token = inGrid ? undefined : TOKENS[at - gridSize]
+  const token = at >= tokenStart ? TOKENS[at - tokenStart] : undefined
   const changed = theme.custom?.tokens ?? {}
   const deletingLabel = customThemes.find((c) => c.id === deleting)?.label
 
@@ -291,7 +308,6 @@ export function ThemeSettings() {
       event.stopPropagation()
       return
     }
-    const last = gridSize + TOKENS.length - 1
     switch (event.key) {
       case 'h':
       case 'ArrowLeft':
@@ -334,6 +350,8 @@ export function ThemeSettings() {
       case 'c':
         if (inGrid) {
           choose(at)
+        } else if (onFont) {
+          setFontOpen(true)
         } else if (token) {
           startEditing(token)
         }
@@ -379,6 +397,11 @@ export function ThemeSettings() {
     }
     if (inGrid) {
       return `h j k l 移動 · Enter 選ぶ${preset?.custom ? ' · e 名前を変える · d 消す' : ''}`
+    }
+    if (onFont) {
+      return fontOpen
+        ? 'j k 選ぶ · Enter 決める · Esc やめる'
+        : 'j k 移動 · Enter 書体の一覧を開く · どのテーマでも同じ書体を使う'
     }
     return `j k 移動 · Enter 値を選ぶ · r ${theme.base.label} の値に戻す${
       theme.custom ? '' : ' · 変えると、写したカスタムができる'
@@ -430,13 +453,42 @@ export function ThemeSettings() {
             <span>今のテーマを写す</span>
           </button>
         </div>
+        <h3 className="px-3 pt-4 pb-1 text-2xs font-semibold text-muted-foreground">書体</h3>
+        {/* oxlint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions -- キーは外側の div が受ける */}
+        <div
+          data-cursor={onFont}
+          className={cn(
+            'flex min-h-9 items-center justify-between gap-3 rounded-sm px-3',
+            onFont && 'bg-selected',
+          )}
+          onClick={() => {
+            setCursor(fontIndex)
+            focusRoot()
+          }}
+        >
+          <span className="text-sm">本文と画面の書体</span>
+          <Select
+            label="書体"
+            options={FONT_OPTIONS}
+            value={fontFamily}
+            onChange={setFontFamily}
+            open={fontOpen}
+            onOpenChange={(open) => {
+              setCursor(fontIndex)
+              setFontOpen(open)
+              if (!open) {
+                focusRoot()
+              }
+            }}
+          />
+        </div>
         {TOKEN_GROUPS.map((group) => (
           <section key={group.label}>
             <h3 className="px-3 pt-4 pb-1 text-2xs font-semibold text-muted-foreground">
               {group.label}
             </h3>
             {group.tokens.map((name) => {
-              const index = gridSize + TOKENS.indexOf(name)
+              const index = tokenStart + TOKENS.indexOf(name)
               const value = theme.tokens[name]
               const color = resolveToken(theme.tokens, name) ?? '#000000'
               const edit = editing?.token === name ? editing : null

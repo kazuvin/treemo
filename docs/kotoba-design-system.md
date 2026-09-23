@@ -79,6 +79,14 @@ Tailwind 標準の `gray` は `--color-gray-*: initial` で消してあるので
 要らない。Fontsource は可変フォントを `"Noto Sans Mono Variable"` のような別名で登録するため、
 `--font-sans` / `--font-mono` はその名前を直接指す。
 
+**書体は設定で選び直せる**（設定画面の「テーマ」の書体）。候補は `src/lib/font-family.ts` の
+`FONT_FAMILIES` で、上の Noto の組が既定。ほかに SF Mono・Menlo（等幅）、Noto Sans JP・
+ヒラギノ角ゴ・ヒラギノ明朝（プロポーショナル）を置く。同梱しない書体は macOS に入っているものを
+名前で指す。`applyFontFamily` が `<html>` の style で `--font-sans` と `--font-mono` を**同じ値に**
+上書きするので、「1 つの書体に寄せる」ことは書体を変えても崩れない。書体は色のプリセットには
+属さない（どのテーマでも同じ）。既定の値を変えたら `globals.css` も直す
+（`src/lib/font-family.test.ts` が食い違いを見つける）。
+
 #### 基準サイズとスケール
 
 **基準にして上限が `0.875rem` (14px)。** 見出しも本文も同じ 14px で組み、階層は
@@ -316,6 +324,21 @@ tier-1 の画面端スペーシング (24 / 32 / 24) を供給するシェル。
 
 `width` は既定 390 (設計時のビューポート幅)。子はシェルと喧嘩する margin を足さない。
 
+### `Select`
+
+値を 1 つ選ぶ箱 (`src/components/ui/select.tsx`)。開くかどうかは親が持つ (`open` /
+`onOpenChange`)。設定画面では項目の上で `Enter` を押すと開き、開いた一覧がキーを受ける。
+
+```tsx
+<Select label="書体" options={options} value={value} onChange={set} open={open} onOpenChange={setOpen} />
+```
+
+- 箱は `border-border-strong` の 1px と `bg-background`。一覧は `bg-popover` に同じ線で、
+  **影は使わない**。カーソルの行は `bg-selected`、今の値は `font-semibold`。
+- 一覧は `j` / `k` (`↑` / `↓`)、`g` / `G` で動き、`Enter` / `Space` で決め、`Esc` / `q` / `h`
+  でやめる。開いている間はほかのキーを外へ漏らさない。フォーカスが外れたら閉じる。
+- 選択肢の `style` は一覧の中でだけ効く (書体の見本を、その書体で出すのに使う)。
+
 ---
 
 ## コンテンツの書き方
@@ -390,7 +413,7 @@ Kotoba Dark、Washi と、背景画像を敷く山・川・海・森・夜の 8 
   トークン（面・文字・境界・選択など）はどれもランプとアクセントの段を指すので、プリセットの
   違いはランプとアクセントの 15 段だけ。輪になって色へ辿れなくなる値は受け付けない。
 - **プリセットは `src/lib/theme.ts` の `THEMES` に書く。** 書体・余白・角丸はテーマで
-  変えない。「壊してはいけない 3 つの制約」はどのテーマでも守る（アクセントは
+  変えない（書体は設定で別に選ぶ）。「壊してはいけない 3 つの制約」はどのテーマでも守る（アクセントは
   フォーカスと選択にだけ使う、プライマリの面はランプの 900）。
 - **`globals.css` の `@theme` にも Kotoba の値を書く。** Tailwind がユーティリティを作るのと、
   起動して状態を読むまでの最初の描画に使う。Kotoba の値を変えたら両方を直す
