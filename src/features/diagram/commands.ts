@@ -31,6 +31,8 @@ import {
   undoInDiagram,
   yankSubtree,
 } from './extensions/tree-actions'
+import { useDiagramStore } from './stores/diagram-store'
+import { DEFAULT_ZOOM, stepZoom } from './utils/zoom'
 
 function diagramCommand(
   id: string,
@@ -66,6 +68,24 @@ function blockCommand(
       if (view) {
         run(view)
       }
+    },
+  }
+}
+
+/** 倍率はどのブロックにも効くので、DIAGRAM モードの外でもパレットから変えられる */
+function zoomCommand(
+  id: string,
+  title: string,
+  sequences: string[],
+  next: (zoom: number) => number,
+): Command {
+  return {
+    id,
+    title,
+    keys: sequences.map((sequence): KeyBinding => ({ scope: 'diagram', sequence })),
+    run: () => {
+      const store = useDiagramStore.getState()
+      store.setZoom(next(store.zoom))
     },
   }
 }
@@ -138,6 +158,9 @@ export const diagramCommands: Command[] = [
   diagramCommand('diagram.foldAll', 'すべて折りたたむ', ['zM'], (view) => setAllFolds(view, true)),
   diagramCommand('diagram.undo', '取り消す', ['u'], undoInDiagram),
   diagramCommand('diagram.redo', 'やり直す', ['<C-r>'], redoInDiagram),
+  zoomCommand('diagram.zoomIn', '図を拡大する', ['+', '='], (zoom) => stepZoom(zoom, 1)),
+  zoomCommand('diagram.zoomOut', '図を縮小する', ['-'], (zoom) => stepZoom(zoom, -1)),
+  zoomCommand('diagram.zoomReset', '図の倍率を 100% に戻す', ['0'], () => DEFAULT_ZOOM),
   diagramCommand('diagram.fullscreen', 'インラインと全画面を切り替える', ['F'], toggleFullscreen),
   diagramCommand('diagram.exit', 'DIAGRAM モードを出る', ['Esc', 'q'], exitDiagram),
   diagramCommand('diagram.searchNext', '次の検索の当たりへ', ['n'], (view) =>

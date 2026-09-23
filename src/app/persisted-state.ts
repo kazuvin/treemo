@@ -29,6 +29,8 @@ const schema = z.object({
   bgmVolume: z.number().catch(DEFAULT_BGM_VOLUME),
   preferFullscreen: z.boolean().default(false),
   showKeyGuide: z.boolean().default(true),
+  // 選べない倍率は diagram-store の setZoom が近いものに寄せる
+  diagramZoom: z.number().catch(1),
   // 無い ID なら theme.ts の resolveTheme が既定のテーマにする
   theme: z.string().catch(DEFAULT_THEME),
   // 中身は theme.ts の sanitizeCustomThemes で 1 つずつ確かめる

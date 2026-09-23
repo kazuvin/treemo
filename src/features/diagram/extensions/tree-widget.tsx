@@ -28,6 +28,7 @@ const observers = new WeakMap<HTMLElement, ResizeObserver>()
 
 function GuideAwareView({ view, props }: { view: EditorView; props: TreeWidgetProps }) {
   const showGuide = useDiagramStore((s) => s.showKeyGuide)
+  const zoom = useDiagramStore((s) => s.zoom)
   return (
     <TreeBlockView
       status={props.status}
@@ -38,6 +39,7 @@ function GuideAwareView({ view, props }: { view: EditorView; props: TreeWidgetPr
       search={props.search}
       editing={props.editing}
       showGuide={showGuide}
+      zoom={zoom}
       onSelectBlock={() => selectBlock(view, props.from)}
       onSelectNode={(path) => selectNode(view, props.from, path)}
       onEditNode={(path) => {

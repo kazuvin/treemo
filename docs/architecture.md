@@ -82,7 +82,7 @@ Treemo をどう組み立てるか。何を作るかは [要件定義](requireme
 | DIAGRAM モードで選んでいるノード、全画面かどうか | CodeMirror の `StateField` | 文書の変更と同じトランザクションで動かせる。ノードの位置は文書の変更に合わせて付け替える |
 | 折りたたみ（見出し・リスト・ノード） | CodeMirror の `StateField` + アプリの状態として保存 | ファイルには書かない（要件の「持ち運べること」） |
 | 今のモード（NORMAL / INSERT / VISUAL / DIAGRAM の NORMAL と INSERT）、ブロックの上か、フォーカスのある領域 | `src/stores/mode-store.ts`（Zustand） | ステータスバー・which-key・キーの振り分けなど、エディタの外が読む。本文のエディタとツリーの拡張が書く |
-| DIAGRAM モード中のブロックの写し、全画面・案内の設定 | `features/diagram/stores/diagram-store.ts` | 全画面の表示が読む。正本は `StateField` の方で、拡張がここへ流す |
+| DIAGRAM モード中のブロックの写し、全画面・案内・倍率の設定 | `features/diagram/stores/diagram-store.ts` | 全画面の表示が読む。正本は `StateField` の方で、拡張がここへ流す |
 | 選んでいるテーマ、カスタムのプリセット | `src/stores/theme-store.ts` + アプリの状態として保存 | app が購読して `<html>` の `data-theme` と色の変数に書く（[Kotoba](kotoba-design-system.md) の「テーマ」） |
 | ステータスバーの短い知らせ | `src/stores/status-store.ts` | 次のキーで消える。消えては困る知らせ（衝突・保存の失敗）はここに出さない |
 | アプリの状態の保存（最後の保管庫、折りたたみなど） | `src/app/persisted-state.ts` → Rust の `app_state_read` / `app_state_write` | 保管庫の外（Application Support）に JSON で置く |

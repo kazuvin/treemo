@@ -136,6 +136,7 @@ async function boot(): Promise<void> {
   setAmbienceVolume(useUiStore.getState().bgmVolume)
   useDiagramStore.getState().setPreferFullscreen(state.preferFullscreen)
   useDiagramStore.getState().setShowKeyGuide(state.showKeyGuide)
+  useDiagramStore.getState().setZoom(state.diagramZoom)
   const customThemes = sanitizeCustomThemes(state.customThemes)
   useThemeStore.getState().setCustomThemes(customThemes)
   useThemeStore.getState().setTheme(resolveTheme(state.theme, customThemes).id)
@@ -193,12 +194,14 @@ async function boot(): Promise<void> {
   useDiagramStore.subscribe((diagram, prev) => {
     if (
       diagram.preferFullscreen !== prev.preferFullscreen ||
-      diagram.showKeyGuide !== prev.showKeyGuide
+      diagram.showKeyGuide !== prev.showKeyGuide ||
+      diagram.zoom !== prev.zoom
     ) {
       updatePersistedState((s) => ({
         ...s,
         preferFullscreen: diagram.preferFullscreen,
         showKeyGuide: diagram.showKeyGuide,
+        diagramZoom: diagram.zoom,
       }))
     }
   })

@@ -17,19 +17,15 @@ const NORMAL: KeyHint[] = [
   { keys: ['>', '<'], label: '字下げ' },
   { keys: ['J', 'K'], label: '入れ替え' },
   { keys: ['za'], label: '折りたたみ' },
+  { keys: ['+', '-'], label: '拡大縮小' },
   { keys: ['F'], label: '全画面' },
   { keys: ['Esc'], label: '出る' },
 ]
 
-const MINIMAL: KeyHint[] = [{ keys: ['Esc'], label: 'DIAGRAM を出る' }]
-
 /**
  * DIAGRAM モードで次に押せる主なキー（F-UX-5）。ノードの近くに出すと隣のノードと重なるので、
- * 操作中のブロックの下端に 1 行で出す。設定で消すと最小限だけにする。
+ * 操作中のブロックの下端に 1 行で出す。設定で消したときは何も出さない。
  */
-export function KeyGuide({ editing, show }: { editing: Editing | null; show: boolean }) {
-  if (!show) {
-    return <KeyHints hints={MINIMAL} />
-  }
+export function KeyGuide({ editing }: { editing: Editing | null }) {
   return <KeyHints hints={editing ? EDITING : NORMAL} />
 }

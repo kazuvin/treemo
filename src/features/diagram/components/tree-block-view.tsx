@@ -6,6 +6,7 @@ import type { StrayLine, TreeNode } from '../types/tree'
 import { KeyGuide } from './key-guide'
 import type { CommitNext } from './node-editor'
 import { TreeCanvas } from './tree-canvas'
+import { ZoomControl } from './zoom-control'
 
 /**
  * ブロックの 4 つの状態（F-TREE-2）のうち、絵で見せる 3 つ。
@@ -33,6 +34,7 @@ interface TreeBlockViewProps {
   search: RegExp | null
   editing: Editing | null
   showGuide: boolean
+  zoom: number
   onSelectBlock: () => void
   onSelectNode: (path: number[]) => void
   onEditNode: (path: number[]) => void
@@ -49,6 +51,7 @@ export function TreeBlockView({
   search,
   editing,
   showGuide,
+  zoom,
   onSelectBlock,
   onSelectNode,
   onEditNode,
@@ -86,6 +89,7 @@ export function TreeBlockView({
                 search={search}
                 editing={status === 'diagram' ? editing : null}
                 showGuide={showGuide}
+                zoom={zoom}
                 onSelectNode={onSelectNode}
                 onEditNode={onEditNode}
                 onAddNode={onAddNode}
@@ -112,8 +116,9 @@ export function TreeBlockView({
           )}
           {status === 'selected' && <KeyHints className="mt-2" hints={SELECTED_HINTS} />}
           {status === 'diagram' && (
-            <div className="mt-2">
-              <KeyGuide editing={editing} show={showGuide} />
+            <div className="mt-2 flex items-start gap-4">
+              {showGuide && <KeyGuide editing={editing} />}
+              <ZoomControl className="ml-auto" />
             </div>
           )}
         </>

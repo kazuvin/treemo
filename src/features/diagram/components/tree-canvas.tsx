@@ -54,6 +54,8 @@ interface TreeCanvasProps {
   editing: Editing | null
   /** 選んでいるノードの横と下に、ノードを足す印を出すか */
   showGuide: boolean
+  /** 図の倍率。ノードの大きさは倍率を掛ける前の値で測り、配置する */
+  zoom?: number
   onSelectNode: (path: number[]) => void
   onEditNode: (path: number[]) => void
   onAddNode: (path: number[], where: 'child' | 'sibling') => void
@@ -71,6 +73,7 @@ export function TreeCanvas({
   search = null,
   editing,
   showGuide,
+  zoom = 1,
   onSelectNode,
   onEditNode,
   onAddNode,
@@ -155,90 +158,95 @@ export function TreeCanvas({
     if (focusId) {
       elements.current.get(focusId)?.scrollIntoView({ block: 'nearest', inline: 'nearest' })
     }
-  }, [focusId, measureTick])
+  }, [focusId, measureTick, zoom])
 
+  // 右端の列の「子を足す」と、最後のノードの「兄弟を足す」の印の場所を常に空けておく
+  const width = layout.width + LAYOUT.columnGap
+  const height = layout.height + LAYOUT.siblingGap
   return (
-    <div
-      ref={container}
-      className="relative"
-      // 右端の列の「子を足す」と、最後のノードの「兄弟を足す」の印の場所を常に空けておく
-      style={{ width: layout.width + LAYOUT.columnGap, height: layout.height + LAYOUT.siblingGap }}
-    >
-      <svg
-        className="pointer-events-none absolute inset-0 overflow-visible"
-        width={layout.width}
-        height={layout.height}
-        aria-hidden="true"
+    // transform は周りの配置に効かないので、外側の箱で倍率を掛けた後の場所を取る
+    <div style={{ width: width * zoom, height: height * zoom }}>
+      <div
+        ref={container}
+        className="relative origin-top-left"
+        style={{ width, height, transform: zoom === 1 ? undefined : `scale(${zoom})` }}
       >
-        {layout.edges.map((edge) => {
-          const parent = tweened.rect(edge.from)
-          const child = tweened.rect(edge.to)
-          if (!parent || !child) {
-            return null
-          }
-          const appear = tweened.appear(edge.to)
-          // 現れる子への辺は、親の側から伸ばして描く
-          const drawing =
-            appear < 1 ? { pathLength: 1, strokeDasharray: 1, strokeDashoffset: 1 - appear } : {}
-          return (
-            <path
-              key={`${edge.from}>${edge.to}`}
-              d={edgePath(parent, child)}
-              fill="none"
-              stroke="var(--color-border-strong)"
-              strokeWidth={1}
-              strokeLinecap="round"
-              {...drawing}
-            />
-          )
-        })}
-      </svg>
-      {nodes.map((node) => (
-        <NodeBox
-          key={node.id}
-          id={node.id}
-          content={node.content}
-          hidden={node.collapsed ? countDescendants(node) : 0}
-          x={tweened.rect(node.id)?.x ?? 0}
-          y={tweened.rect(node.id)?.y ?? 0}
-          appear={tweened.appear(node.id)}
-          selected={node.id === selectedId || node.id === hitId}
-          search={search}
-          editing={node.id === editingId ? editing : null}
-          register={register}
-          onSelectNode={onSelectNode}
-          onEditNode={onEditNode}
-          onCommit={onCommit}
-          onHasTextChange={setEditingHasText}
-        />
-      ))}
-      {showGuide && selectedId && selectedRect && selectedNode && (
-        <>
-          {selectedNode.children.length === 0 && (
-            <Signifier
-              key={`child:${selectedId}:${guideHidden}`}
-              direction="right"
-              hidden={guideHidden}
-              keys="Tab"
-              title="子ノードを足す（Tab）"
-              x={selectedRect.x + selectedRect.width + SIGNIFIER_GAP}
-              y={selectedRect.y + (selectedRect.height - SIGNIFIER_HEIGHT) / 2}
-              onAdd={editing ? null : () => onAddNode(toPath(selectedId), 'child')}
-            />
-          )}
-          <Signifier
-            key={`sibling:${selectedId}:${siblingKey}:${guideHidden}`}
-            direction="down"
-            hidden={guideHidden}
-            keys={siblingKey}
-            title={`下に兄弟ノードを足す（${siblingKey}）`}
-            x={selectedRect.x}
-            y={selectedRect.y + selectedRect.height + (LAYOUT.siblingGap - SIGNIFIER_HEIGHT) / 2}
-            centerIn={selectedRect.width}
-            onAdd={editing ? null : () => onAddNode(toPath(selectedId), 'sibling')}
+        <svg
+          className="pointer-events-none absolute inset-0 overflow-visible"
+          width={layout.width}
+          height={layout.height}
+          aria-hidden="true"
+        >
+          {layout.edges.map((edge) => {
+            const parent = tweened.rect(edge.from)
+            const child = tweened.rect(edge.to)
+            if (!parent || !child) {
+              return null
+            }
+            const appear = tweened.appear(edge.to)
+            // 現れる子への辺は、親の側から伸ばして描く
+            const drawing =
+              appear < 1 ? { pathLength: 1, strokeDasharray: 1, strokeDashoffset: 1 - appear } : {}
+            return (
+              <path
+                key={`${edge.from}>${edge.to}`}
+                d={edgePath(parent, child)}
+                fill="none"
+                stroke="var(--color-border-strong)"
+                strokeWidth={1}
+                strokeLinecap="round"
+                {...drawing}
+              />
+            )
+          })}
+        </svg>
+        {nodes.map((node) => (
+          <NodeBox
+            key={node.id}
+            id={node.id}
+            content={node.content}
+            hidden={node.collapsed ? countDescendants(node) : 0}
+            x={tweened.rect(node.id)?.x ?? 0}
+            y={tweened.rect(node.id)?.y ?? 0}
+            appear={tweened.appear(node.id)}
+            selected={node.id === selectedId || node.id === hitId}
+            search={search}
+            editing={node.id === editingId ? editing : null}
+            register={register}
+            onSelectNode={onSelectNode}
+            onEditNode={onEditNode}
+            onCommit={onCommit}
+            onHasTextChange={setEditingHasText}
           />
-        </>
-      )}
+        ))}
+        {showGuide && selectedId && selectedRect && selectedNode && (
+          <>
+            {selectedNode.children.length === 0 && (
+              <Signifier
+                key={`child:${selectedId}:${guideHidden}`}
+                direction="right"
+                hidden={guideHidden}
+                keys="Tab"
+                title="子ノードを足す（Tab）"
+                x={selectedRect.x + selectedRect.width + SIGNIFIER_GAP}
+                y={selectedRect.y + (selectedRect.height - SIGNIFIER_HEIGHT) / 2}
+                onAdd={editing ? null : () => onAddNode(toPath(selectedId), 'child')}
+              />
+            )}
+            <Signifier
+              key={`sibling:${selectedId}:${siblingKey}:${guideHidden}`}
+              direction="down"
+              hidden={guideHidden}
+              keys={siblingKey}
+              title={`下に兄弟ノードを足す（${siblingKey}）`}
+              x={selectedRect.x}
+              y={selectedRect.y + selectedRect.height + (LAYOUT.siblingGap - SIGNIFIER_HEIGHT) / 2}
+              centerIn={selectedRect.width}
+              onAdd={editing ? null : () => onAddNode(toPath(selectedId), 'sibling')}
+            />
+          </>
+        )}
+      </div>
     </div>
   )
 }

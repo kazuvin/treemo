@@ -4,11 +4,13 @@ import { addNodeAt, commitEdit, editNode, selectNode } from '../extensions/tree-
 import { useDiagramStore } from '../stores/diagram-store'
 import { KeyGuide } from './key-guide'
 import { TreeCanvas } from './tree-canvas'
+import { ZoomControl } from './zoom-control'
 
 /** DIAGRAM モードの全画面表示（F-TREE-5）。エディタの上に重ね、同じ状態を見る */
 export function DiagramFullscreen({ view }: { view: EditorView | null }) {
   const active = useDiagramStore((s) => s.active)
   const showGuide = useDiagramStore((s) => s.showKeyGuide)
+  const zoom = useDiagramStore((s) => s.zoom)
   if (!view || !active?.fullscreen) {
     return null
   }
@@ -24,8 +26,9 @@ export function DiagramFullscreen({ view }: { view: EditorView | null }) {
         }
       }}
     >
-      <div className="px-6 py-3">
-        <KeyGuide editing={active.editing} show={showGuide} />
+      <div className="flex items-start gap-4 px-6 py-3">
+        {showGuide && <KeyGuide editing={active.editing} />}
+        <ZoomControl className="ml-auto" />
       </div>
       <div className="min-h-0 flex-1 overflow-auto px-6 pb-12">
         {active.roots.length > 0 ? (
@@ -34,6 +37,7 @@ export function DiagramFullscreen({ view }: { view: EditorView | null }) {
             selectedId={active.path?.join('.') ?? null}
             editing={active.editing}
             showGuide={showGuide}
+            zoom={zoom}
             onAddNode={(path, where) => addNodeAt(view, active.from, path, where)}
             onSelectNode={(path) => selectNode(view, active.from, path)}
             onEditNode={(path) => {
