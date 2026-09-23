@@ -88,6 +88,11 @@ async function boot(): Promise<void> {
       updatePersistedState((s) => ({ ...s, theme: theme.theme }))
     }
   })
+  useVaultStore.subscribe((vault, prev) => {
+    if (vault.cursor && vault.cursor !== prev.cursor) {
+      notes.prefetch(vault.cursor)
+    }
+  })
   useUiStore.subscribe((ui, prev) => {
     if (ui.sidebarVisible !== prev.sidebarVisible || ui.sidebarSide !== prev.sidebarSide) {
       updatePersistedState((s) => ({

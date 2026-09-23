@@ -15,6 +15,7 @@ import {
   VaultCommandError,
 } from '@/features/vault/api/vault'
 import { initialSession, useVaultStore } from '@/features/vault/stores/vault-store'
+import { NoteCache } from '@/features/vault/utils/note-cache'
 import { NoteSession } from '@/features/vault/utils/note-session'
 import { useStatusStore } from '@/stores/status-store'
 import { noteKey, persistedState, setNoteState, updatePersistedState } from './persisted-state'
@@ -34,6 +35,7 @@ class NoteController {
   private handle: EditorHandle | null = null
   private session: NoteSession | null = null
   private queue: Promise<unknown> = Promise.resolve()
+  private readonly cache = new NoteCache()
 
   readonly extension = EditorView.updateListener.of((update) => {
     if (update.docChanged && !update.transactions.some((tr) => tr.annotation(externalLoad))) {
@@ -59,6 +61,7 @@ class NoteController {
   openVault(path: string): Promise<void> {
     return this.enqueue(async () => {
       await this.closeCurrent()
+      this.cache.clear()
       const store = useVaultStore.getState()
       try {
         const info = await vaultOpen(path)
@@ -95,6 +98,25 @@ class NoteController {
     return this.enqueue(() => this.openNow(path))
   }
 
+  /**
+   * 開く前に読んでおく（サイドバーのカーソルが乗ったときなど）。開くときに IPC を待たずに済む。
+   * iCloud からダウンロードが要るものは、選んだだけで落とさないよう読まない
+   */
+  prefetch(path: string): void {
+    const entry = useVaultStore.getState().entries.find((e) => e.path === path)
+    if (entry?.kind !== 'note' || entry.placeholder || this.session?.path === path) {
+      return
+    }
+    if (this.cache.has(path)) {
+      return
+    }
+    const version = this.cache.version(path)
+    noteRead(path).then(
+      (note) => this.cache.set(path, note, version),
+      () => undefined,
+    )
+  }
+
   private async openNow(path: string): Promise<void> {
     const store = useVaultStore.getState()
     const handle = this.handle
@@ -109,17 +131,31 @@ class NoteController {
     if (entry?.placeholder) {
       useStatusStore.getState().show('iCloud からダウンロードしています…')
     }
+    const cached = entry?.placeholder ? undefined : this.cache.get(path)
     let note: { content: string; hash: string }
-    try {
-      note = await noteRead(path)
-    } catch (error) {
-      console.error('メモを開けませんでした', error)
-      useStatusStore.getState().show(`メモを開けませんでした: ${message(error)}`)
-      return
+    if (cached) {
+      note = cached
+    } else {
+      // 読んでいる間に、前のメモを書いておく（書くのはエディタを差し替える前でないといけない）
+      const flushing = this.session?.flush()
+      try {
+        note = await noteRead(path)
+      } catch (error) {
+        console.error('メモを開けませんでした', error)
+        useStatusStore.getState().show(`メモを開けませんでした: ${message(error)}`)
+        return
+      } finally {
+        await flushing
+      }
     }
-    await this.closeCurrent()
+    // 何も開いていない間はエディタの枠が invisible。切り替えのときは開いたままにして、
+    // 途中で invisible に描き直されないようにする（隠れた要素には focus() が効かない）
+    const wasOpen = useVaultStore.getState().openPath !== null
+    await this.closeCurrent({ keepOpenPath: true })
+    // 開いている間の正本はエディタ。閉じるときに入れ直す
+    this.cache.delete(path)
     handle.load(note.content)
-    this.session = new NoteSession(
+    const session = new NoteSession(
       path,
       note.hash,
       { read: noteRead, write: noteWrite },
@@ -129,6 +165,7 @@ class NoteController {
       },
       (snapshot) => useVaultStore.getState().setSession(snapshot),
     )
+    this.session = session
     store.setOpenPath(path)
     store.setSession(initialSession)
     store.reveal(path)
@@ -145,9 +182,20 @@ class NoteController {
       useStatusStore.getState().clear()
       void this.refreshNow()
     }
-    // 何も開いていなかった間はエディタの枠が invisible で、ここではまだ描き直されていない。
-    // そのまま focus() しても効かないので、描き直したあとに当てる
-    requestAnimationFrame(() => handle.view.focus())
+    if (wasOpen) {
+      handle.view.focus()
+    } else {
+      // invisible の枠はまだ描き直されていない。描き直したあとに当てる
+      requestAnimationFrame(() => handle.view.focus())
+    }
+    if (cached) {
+      // 先読みした中身は古いかもしれない。読み直し、違えば外の変更として取り込む
+      void this.enqueue(async () => {
+        if (this.session === session) {
+          await session.onExternalChange()
+        }
+      })
+    }
   }
 
   private replaceText(text: string): void {
@@ -176,16 +224,22 @@ class NoteController {
     })
   }
 
-  private async closeCurrent(): Promise<void> {
+  private async closeCurrent({ keepOpenPath = false } = {}): Promise<void> {
     const session = this.session
     if (!session) {
       return
     }
     this.rememberNoteState()
     await session.flush()
+    const view = this.view
+    if (view && !session.dirty && session.state.saveState === 'saved') {
+      this.cache.set(session.path, { content: view.state.doc.toString(), hash: session.hash })
+    }
     session.dispose()
     this.session = null
-    useVaultStore.getState().setOpenPath(null)
+    if (!keepOpenPath) {
+      useVaultStore.getState().setOpenPath(null)
+    }
   }
 
   /** `:w`、ウィンドウのフォーカスが外れたとき */
@@ -204,6 +258,9 @@ class NoteController {
 
   onVaultChanged(paths: readonly string[]): Promise<void> {
     return this.enqueue(async () => {
+      for (const path of paths) {
+        this.cache.delete(path)
+      }
       await this.refreshNow()
       const session = this.session
       if (session && paths.includes(session.path)) {
@@ -214,6 +271,7 @@ class NoteController {
 
   createNote(path: string): Promise<void> {
     return this.enqueue(async () => {
+      this.cache.delete(path)
       try {
         await noteCreate(path)
       } catch (error) {
@@ -233,6 +291,8 @@ class NoteController {
       if (from === to) {
         return
       }
+      this.cache.delete(from)
+      this.cache.delete(to)
       const wasOpen = this.session?.path === from
       if (wasOpen) {
         await this.closeCurrent()
@@ -264,6 +324,7 @@ class NoteController {
 
   trashNote(path: string): Promise<void> {
     return this.enqueue(async () => {
+      this.cache.delete(path)
       if (this.session?.path === path) {
         await this.closeCurrent()
         this.handle?.load('')
