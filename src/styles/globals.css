@@ -252,7 +252,8 @@
 
   /** ---- モーション ----
       120ms、color と opacity のみ。バウンスもスプリングも無く、中身を拡大縮小
-      させることもしない。ツリーブロックだけは位置も動かす（docs/tree-block.md の「動き」） */
+      させることもしない。ツリーブロックと編集 / 閲覧のスイッチの塗りだけは位置も動かす
+      （docs/kotoba-design-system.md の「motion」） */
   --ease-standard: cubic-bezier(0.2, 0, 0.2, 1);
 
   /** アニメーション */

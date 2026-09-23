@@ -1,4 +1,5 @@
-import type { ReactNode } from 'react'
+import { type ReactNode, useEffect, useState } from 'react'
+import { useHeld, usePresence } from '@/components/ui/use-presence'
 import { cn } from '@/lib/cn'
 import { useUiStore } from './ui-store'
 
@@ -55,10 +56,9 @@ function Segment({
       onMouseDown={(event) => event.preventDefault()}
       onClick={onPress}
       className={cn(
-        'grid size-6 place-items-center rounded-sm',
-        selected
-          ? 'bg-muted text-foreground'
-          : 'text-muted-foreground hover:bg-muted hover:text-foreground',
+        // 選んでいる印の塗りは下に敷いた 1 枚が滑って受け持つので、ボタンは文字の色だけを変える
+        'relative grid size-6 place-items-center rounded-sm transition-colors duration-120 ease-standard',
+        selected ? 'text-foreground' : 'text-muted-foreground hover:text-foreground',
       )}
     >
       {children}
@@ -66,23 +66,78 @@ function Segment({
   )
 }
 
+/** 切り替えた直後に、どちらにしたかをスイッチの下に出しておく長さ */
+const NOTICE_MS = 1600
+
+interface Notice {
+  reading: boolean
+  /** 同じモードへ続けて切り替えても出し直すための番号 */
+  id: number
+}
+
 /** 編集モードと閲覧モードを切り替えるスイッチ（Obsidian の右上のもの）。keyLabel は割り当てたキー */
 export function ReadingToggle({ keyLabel }: { keyLabel: string | null }) {
   const reading = useUiStore((s) => s.reading)
   const setReading = useUiStore((s) => s.setReading)
   const suffix = keyLabel ? `（${keyLabel}）` : ''
+  // キーやパレットで切り替えたときも知らせるので、押したときではなく値の変化で出す
+  const [seen, setSeen] = useState(reading)
+  const [notice, setNotice] = useState<Notice | null>(null)
+  if (seen !== reading) {
+    setSeen(reading)
+    setNotice({ reading, id: (notice?.id ?? 0) + 1 })
+  }
+  useEffect(() => {
+    if (!notice) {
+      return
+    }
+    const timer = setTimeout(() => setNotice(null), NOTICE_MS)
+    return () => clearTimeout(timer)
+  }, [notice])
+  const presence = usePresence(notice !== null)
+  const shown = useHeld(notice)
+
   return (
-    <div
-      role="group"
-      aria-label="表示"
-      className="absolute top-2 right-3 z-10 flex gap-0.5 rounded-sm border border-border bg-card p-0.5"
-    >
-      <Segment selected={!reading} label={`編集モード${suffix}`} onPress={() => setReading(false)}>
-        <PencilIcon />
-      </Segment>
-      <Segment selected={reading} label={`閲覧モード${suffix}`} onPress={() => setReading(true)}>
-        <BookIcon />
-      </Segment>
+    <div className="absolute top-2 right-3 z-10 flex flex-col items-end">
+      <div
+        role="group"
+        aria-label="表示"
+        className="relative flex gap-0.5 rounded-sm border border-border bg-card p-0.5"
+      >
+        <span
+          aria-hidden="true"
+          className="absolute top-0.5 left-0.5 size-6 rounded-sm bg-muted motion-safe:transition-transform motion-safe:duration-160 motion-safe:ease-standard"
+          // ボタン 1 つ（24px）と間（2px）のぶん横へ滑らせる
+          style={{ transform: reading ? 'translateX(26px)' : undefined }}
+        />
+        <Segment
+          selected={!reading}
+          label={`編集モード${suffix}`}
+          onPress={() => setReading(false)}
+        >
+          <PencilIcon />
+        </Segment>
+        <Segment selected={reading} label={`閲覧モード${suffix}`} onPress={() => setReading(true)}>
+          <BookIcon />
+        </Segment>
+      </div>
+      <p aria-live="polite" className="mt-1 h-5">
+        {presence.mounted && shown && (
+          <span
+            key={shown.id}
+            className={cn(
+              'inline-flex h-5 items-center rounded-sm border border-border bg-card px-2 text-2xs whitespace-nowrap text-subtle-foreground',
+              presence.closing
+                ? 'motion-safe:animate-fade-out-fast'
+                : 'motion-safe:animate-fade-in-fast',
+            )}
+          >
+            {shown.reading
+              ? `閲覧モード · 書き換えできません${keyLabel ? `（${keyLabel} で戻す）` : ''}`
+              : '編集モード'}
+          </span>
+        )}
+      </p>
     </div>
   )
 }
