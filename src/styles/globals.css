@@ -28,9 +28,9 @@
   --font-mono: "Noto Sans Mono Variable", "Noto Sans JP Variable", ui-monospace, monospace;
 
   /** ---- 色 ----
-      ここに書く色の値は Kotoba テーマ（既定）のもの。ほかのテーマは
-      :root[data-theme='<id>'] で同じ変数を上書きする。data-theme は
-      src/lib/theme.ts の applyTheme が状態から書く。 */
+      ここに書く色の値は Kotoba テーマ（既定）のもの。起動するとすぐ src/lib/theme.ts の
+      applyTheme が、選んでいるプリセットとユーザーの上書きを <html> の style に書いて
+      同じ変数を上書きする。値を変えたら theme.ts の Kotoba も直す（theme.test.ts が見る）。 */
 
   /** ---- ニュートラルランプ ----
       アクセント以外のすべての色 — 面も境界もテキストも、そしてプライマリ
@@ -54,7 +54,7 @@
       基準は kazuvin.me のロゴのピンクそのもの (#f23182)。600 / 700 / tint は
       同じ色相のまま、明度と彩度だけを動かした段で、白地に対する 3:1 (非文字の
       コントラスト下限) は基準の 3.79 で満たしている。 */
-  --color-accent: rgb(242, 49, 130);
+  --color-accent: #f23182;
   --color-accent-600: #cb2a6e;
   --color-accent-700: #9b2356;
   --color-accent-tint: #feeff5;
@@ -247,6 +247,13 @@
   --ease-standard: cubic-bezier(0.2, 0, 0.2, 1);
 
   /** アニメーション */
+  /** 重ねる箱（OverlayPanel）の出入り。退場の長さは components/ui/use-presence.ts の
+      EXIT_MS と合わせる。箱をわずかに縮めるのは、motion の節にある「スケールイン無し」の
+      例外で、どこから出てどこへ消えたかを見せるため（docs/kotoba-design-system.md） */
+  --animate-fade-in-fast: 160ms var(--ease-standard) fade-in;
+  --animate-fade-out-fast: 120ms var(--ease-standard) fade-out forwards;
+  --animate-overlay-in: 160ms var(--ease-standard) overlay-in;
+  --animate-overlay-out: 120ms var(--ease-standard) overlay-out forwards;
   --animate-fade-in: 0.2s ease fade-in;
   --animate-fade-out: 0.2s ease fade-out;
   --animate-scale-in: 0.2s ease scale-in;
@@ -274,6 +281,28 @@
     }
     to {
       opacity: 0;
+    }
+  }
+
+  @keyframes overlay-in {
+    from {
+      opacity: 0;
+      transform: translateY(-4px) scale(0.98);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+
+  @keyframes overlay-out {
+    from {
+      opacity: 1;
+      transform: none;
+    }
+    to {
+      opacity: 0;
+      transform: translateY(-4px) scale(0.98);
     }
   }
 
@@ -351,9 +380,12 @@ body {
 }
 
 /* フォーカスリングはアクセントを使ってよい 2 箇所のうちの 1 つ。2px オフセットの
-   2px で描くので、--radius-focus は --radius-control + 2 になっている。 */
-:where(button, a, [tabindex]):focus-visible {
-  outline: 2px solid var(--color-ring);
-  outline-offset: 2px;
-  border-radius: var(--radius-focus);
+   2px で描くので、--radius-focus は --radius-control + 2 になっている。
+   base レイヤーに置くので、キーを受けるだけの領域（tabIndex の div）は outline-none で消せる。 */
+@layer base {
+  :where(button, a, [tabindex]):focus-visible {
+    outline: 2px solid var(--color-ring);
+    outline-offset: 2px;
+    border-radius: var(--radius-focus);
+  }
 }

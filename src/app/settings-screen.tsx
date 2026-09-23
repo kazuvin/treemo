@@ -5,16 +5,16 @@ import { KeybindingEditor } from '@/features/commands/components/keybinding-edit
 import { useTreeStore } from '@/features/tree/stores/tree-store'
 import { useVaultStore } from '@/features/vault/stores/vault-store'
 import { cn } from '@/lib/cn'
-import { THEMES } from '@/lib/theme'
-import { useThemeStore } from '@/stores/theme-store'
 import { currentKeyOverrides, defaultCommands, pickVault, saveKeyOverrides } from './commands'
 import { openKeybindings } from './keybindings'
+import { ThemeSettings } from './theme-settings'
 import { useUiStore } from './ui-store'
 
-type Tab = 'general' | 'keys'
+type Tab = 'general' | 'theme' | 'keys'
 
 const TABS: { id: Tab; label: string }[] = [
   { id: 'general', label: '一般' },
+  { id: 'theme', label: 'テーマ' },
   { id: 'keys', label: 'キー' },
 ]
 
@@ -36,8 +36,6 @@ function GeneralSettings({ onClose }: { onClose: () => void }) {
   const rootRef = useRef<HTMLDivElement>(null)
   const sidebarSide = useUiStore((s) => s.sidebarSide)
   const setSidebarSide = useUiStore((s) => s.setSidebarSide)
-  const theme = useThemeStore((s) => s.theme)
-  const setTheme = useThemeStore((s) => s.setTheme)
   const showKeyGuide = useTreeStore((s) => s.showKeyGuide)
   const setShowKeyGuide = useTreeStore((s) => s.setShowKeyGuide)
   const vault = useVaultStore((s) => s.vault)
@@ -53,14 +51,6 @@ function GeneralSettings({ onClose }: { onClose: () => void }) {
         label: side === 'left' ? '左' : '右',
         selected: sidebarSide === side,
         select: () => setSidebarSide(side),
-      })),
-    },
-    {
-      label: 'テーマ',
-      options: THEMES.map((t) => ({
-        label: t.label,
-        selected: theme === t.id,
-        select: () => setTheme(t.id),
       })),
     },
     {
@@ -190,8 +180,8 @@ function GeneralSettings({ onClose }: { onClose: () => void }) {
   )
 }
 
-/** 設定画面（⌘,）。一般の設定と、キーの割り当て */
-export function SettingsScreen({ onClose }: { onClose: () => void }) {
+/** 設定画面（⌘,）。一般の設定、テーマ、キーの割り当て */
+export function SettingsScreen({ onClose, closing }: { onClose: () => void; closing?: boolean }) {
   const [tab, setTab] = useState<Tab>('general')
   const [overrides, setOverrides] = useState(currentKeyOverrides)
 
@@ -199,6 +189,7 @@ export function SettingsScreen({ onClose }: { onClose: () => void }) {
     <OverlayPanel
       label="設定"
       onDismiss={onClose}
+      closing={closing}
       className="flex h-[min(640px,calc(100vh-144px))] w-[min(820px,calc(100vw-48px))] flex-col"
     >
       {/* 中の一覧が受けなかった Tab / Esc / q を受ける */}
@@ -208,7 +199,10 @@ export function SettingsScreen({ onClose }: { onClose: () => void }) {
         onKeyDown={(event) => {
           if (event.key === 'Tab') {
             event.preventDefault()
-            setTab((t) => (t === 'general' ? 'keys' : 'general'))
+            setTab((t) => {
+              const index = TABS.findIndex((x) => x.id === t) + (event.shiftKey ? -1 : 1)
+              return TABS[(index + TABS.length) % TABS.length]?.id ?? t
+            })
           } else if (event.key === 'Escape' || event.key === 'q') {
             event.preventDefault()
             onClose()
@@ -238,9 +232,9 @@ export function SettingsScreen({ onClose }: { onClose: () => void }) {
           </nav>
           <span className="ml-auto text-2xs text-muted-foreground">Tab 切り替え · Esc 閉じる</span>
         </header>
-        {tab === 'general' ? (
-          <GeneralSettings onClose={onClose} />
-        ) : (
+        {tab === 'general' && <GeneralSettings onClose={onClose} />}
+        {tab === 'theme' && <ThemeSettings />}
+        {tab === 'keys' && (
           <KeybindingEditor
             commands={defaultCommands}
             overrides={overrides}

@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react'
 import { Kbd } from '@/components/ui/kbd'
 import { OverlayPanel } from '@/components/ui/overlay-panel'
+import { usePresence } from '@/components/ui/use-presence'
 import { KEY_SCOPES } from '@/lib/command'
 import { useCommandStore } from '../stores/command-store'
 import { keyLabel } from '../utils/key-label'
@@ -12,6 +13,7 @@ export function KeyList({ restoreFocus }: { restoreFocus: () => void }) {
   const commands = useCommandStore((s) => s.commands)
   const setOverlay = useCommandStore((s) => s.setOverlay)
   const listRef = useRef<HTMLDivElement>(null)
+  const { mounted, closing } = usePresence(open)
 
   useEffect(() => {
     if (open) {
@@ -19,7 +21,7 @@ export function KeyList({ restoreFocus }: { restoreFocus: () => void }) {
     }
   }, [open])
 
-  if (!open) {
+  if (!mounted) {
     return null
   }
   const settingsKey = keyLabel(commands, 'app.settings')
@@ -32,6 +34,7 @@ export function KeyList({ restoreFocus }: { restoreFocus: () => void }) {
     <OverlayPanel
       label="キー操作の一覧"
       onDismiss={close}
+      closing={closing}
       className="w-[min(720px,calc(100vw-48px))]"
     >
       {/* 一覧を読むだけの画面で、j / k / Esc を受ける */}

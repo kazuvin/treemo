@@ -2,6 +2,7 @@ import { useEffect, useState, useSyncExternalStore } from 'react'
 import { SidebarKeyGuide } from '@/components/layouts/sidebar-key-guide'
 import { StatusBar } from '@/components/layouts/status-bar'
 import { PromptDialog } from '@/components/ui/prompt-dialog'
+import { useHeld, usePresence } from '@/components/ui/use-presence'
 import { CommandPalette } from '@/features/commands/components/command-palette'
 import { Hints } from '@/features/commands/components/hints'
 import { KeyList } from '@/features/commands/components/key-list'
@@ -22,10 +23,10 @@ import { VaultPicker } from '@/features/vault/components/vault-picker'
 import { useVaultStore } from '@/features/vault/stores/vault-store'
 import { toNotePath } from '@/features/vault/utils/file-tree'
 import { cn } from '@/lib/cn'
-import { applyTheme } from '@/lib/theme'
+import { applyTheme, resolveTheme, sanitizeCustomThemes } from '@/lib/theme'
 import { useModeStore } from '@/stores/mode-store'
 import { useThemeStore } from '@/stores/theme-store'
-import { loadKeybindings, pickVault, registerDefaultCommands } from './commands'
+import { loadKeybindings, openSettings, pickVault, registerDefaultCommands } from './commands'
 import { focusEditor, restoreFocus, trackFocus } from './focus'
 import { clearStatusMessage, getContext, getScopes, replayKeys, swallowKey } from './keys'
 import { notes } from './note-controller'
@@ -67,6 +68,25 @@ function useEditorView(): EditorHandle['view'] | null {
   return useSyncExternalStore(subscribeEditorView, () => editorView)
 }
 
+function SettingsIcon() {
+  return (
+    <svg
+      width="16"
+      height="16"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={1.75}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z" />
+      <circle cx="12" cy="12" r="3" />
+    </svg>
+  )
+}
+
 function gridColumns(sidebarVisible: boolean, side: SidebarSide): string {
   if (!sidebarVisible) {
     return 'minmax(0, 1fr)'
@@ -80,12 +100,18 @@ async function boot(): Promise<void> {
   useUiStore.getState().setSidebarSide(state.sidebarSide)
   useTreeStore.getState().setPreferFullscreen(state.preferFullscreen)
   useTreeStore.getState().setShowKeyGuide(state.showKeyGuide)
-  useThemeStore.getState().setTheme(state.theme)
-  applyTheme(state.theme)
+  const customThemes = sanitizeCustomThemes(state.customThemes)
+  useThemeStore.getState().setCustomThemes(customThemes)
+  useThemeStore.getState().setTheme(resolveTheme(state.theme, customThemes).id)
+  applyTheme(resolveTheme(state.theme, customThemes))
   useThemeStore.subscribe((theme, prev) => {
-    if (theme.theme !== prev.theme) {
-      applyTheme(theme.theme)
-      updatePersistedState((s) => ({ ...s, theme: theme.theme }))
+    if (theme.theme !== prev.theme || theme.customThemes !== prev.customThemes) {
+      applyTheme(resolveTheme(theme.theme, theme.customThemes))
+      updatePersistedState((s) => ({
+        ...s,
+        theme: theme.theme,
+        customThemes: theme.customThemes,
+      }))
     }
   })
   useVaultStore.subscribe((vault, prev) => {
@@ -124,14 +150,16 @@ export function App() {
   const [ready, setReady] = useState(false)
   const vault = useVaultStore((s) => s.vault)
   const openPath = useVaultStore((s) => s.openPath)
-  const switcherOpen = useVaultStore((s) => s.switcherOpen)
   const sidebarVisible = useUiStore((s) => s.sidebarVisible)
   const sidebarSide = useUiStore((s) => s.sidebarSide)
-  const settingsOpen = useUiStore((s) => s.settingsOpen)
-  const prompt = useUiStore((s) => s.prompt)
+  const settings = usePresence(useUiStore((s) => s.settingsOpen))
+  const promptRequest = useUiStore((s) => s.prompt)
+  const prompt = useHeld(promptRequest)
+  const promptPresence = usePresence(promptRequest !== null)
   const focus = useModeStore((s) => s.focus)
   const commands = useCommandStore((s) => s.commands)
   const view = useEditorView()
+  const settingsKey = keyLabel(commands, 'app.settings')
   const hint = (id: string, label: string) => {
     const key = keyLabel(commands, id)
     return key ? `${key} で${label}` : null
@@ -185,15 +213,27 @@ export function App() {
             tabIndex={0}
             aria-label="サイドバー"
             className={cn(
-              'relative flex min-h-0 flex-col border-border',
+              // 領域のフォーカスはリングではなく上端の線で示す
+              'relative flex min-h-0 flex-col border-border outline-none',
               sidebarSide === 'left' ? 'border-r' : 'order-last border-l',
             )}
-            // globals.css のフォーカスリングはレイヤーの外にあり、クラスでは消せない。領域のフォーカスは上端の線で示す
-            style={{ outline: 'none' }}
           >
             {focus === 'sidebar' && <div className="absolute inset-x-0 top-0 h-0.5 bg-ring" />}
-            <header className="flex h-10 items-center px-4 text-xs font-semibold text-subtle-foreground">
-              <span className="truncate">{vault?.name.normalize('NFC')}</span>
+            <header className="flex h-10 items-center gap-2 pr-2 pl-4 text-xs font-semibold text-subtle-foreground">
+              <span className="min-w-0 flex-1 truncate">{vault?.name.normalize('NFC')}</span>
+              <button
+                type="button"
+                tabIndex={-1}
+                data-hint=""
+                aria-label="設定"
+                title={settingsKey ? `設定（${settingsKey}）` : '設定'}
+                // 押してもフォーカスを動かさない。閉じたときに元の場所へ戻すため
+                onMouseDown={(event) => event.preventDefault()}
+                onClick={openSettings}
+                className="grid size-7 shrink-0 place-items-center rounded-sm text-muted-foreground hover:bg-muted hover:text-foreground"
+              >
+                <SettingsIcon />
+              </button>
             </header>
             <div className="min-h-0 flex-1 overflow-y-auto">
               <FileTree
@@ -236,21 +276,20 @@ export function App() {
       <StatusBar />
       <CommandPalette getContext={getContext} restoreFocus={restoreFocus} />
       <KeyList restoreFocus={restoreFocus} />
-      {switcherOpen && (
-        <QuickSwitcher
-          onOpen={(path) => void notes.openNote(path)}
-          onCreate={(path) => void notes.createNote(path)}
-          onClose={() => {
-            useVaultStore.getState().setSwitcherOpen(false)
-            restoreFocus()
-          }}
-        />
-      )}
-      {prompt && (
+      <QuickSwitcher
+        onOpen={(path) => void notes.openNote(path)}
+        onCreate={(path) => void notes.createNote(path)}
+        onClose={() => {
+          useVaultStore.getState().setSwitcherOpen(false)
+          restoreFocus()
+        }}
+      />
+      {promptPresence.mounted && prompt && (
         <PromptDialog
           title={prompt.title}
           initial={prompt.initial}
           confirmLabel={prompt.confirmLabel}
+          closing={promptPresence.closing}
           onSubmit={(value) => {
             useUiStore.getState().setPrompt(null)
             restoreFocus()
@@ -262,8 +301,9 @@ export function App() {
           }}
         />
       )}
-      {settingsOpen && (
+      {settings.mounted && (
         <SettingsScreen
+          closing={settings.closing}
           onClose={() => {
             useUiStore.getState().setSettingsOpen(false)
             restoreFocus()

@@ -1,6 +1,7 @@
 import { Command as Cmdk } from 'cmdk'
 import { Kbd } from '@/components/ui/kbd'
 import { OverlayPanel } from '@/components/ui/overlay-panel'
+import { usePresence } from '@/components/ui/use-presence'
 import type { Command, CommandContext } from '@/lib/command'
 import { isAvailable, useCommandStore } from '../stores/command-store'
 
@@ -19,7 +20,8 @@ export function CommandPalette({ getContext, restoreFocus }: CommandPaletteProps
   const open = useCommandStore((s) => s.overlay === 'palette')
   const commands = useCommandStore((s) => s.commands)
   const setOverlay = useCommandStore((s) => s.setOverlay)
-  if (!open) {
+  const { mounted, closing } = usePresence(open)
+  if (!mounted) {
     return null
   }
   const ctx = getContext()
@@ -29,7 +31,7 @@ export function CommandPalette({ getContext, restoreFocus }: CommandPaletteProps
     restoreFocus()
   }
   return (
-    <OverlayPanel label="コマンドパレット" onDismiss={close}>
+    <OverlayPanel label="コマンドパレット" onDismiss={close} closing={closing}>
       <Cmdk
         label="コマンドパレット"
         loop

@@ -10,6 +10,7 @@ interface PromptDialogProps {
   confirmLabel: string
   onSubmit: (value: string) => void
   onCancel: () => void
+  closing?: boolean
 }
 
 /** 名前の入力や削除の確認。ブラウザの prompt / confirm はキー操作を止めるので使わない */
@@ -19,10 +20,11 @@ export function PromptDialog({
   confirmLabel,
   onSubmit,
   onCancel,
+  closing,
 }: PromptDialogProps) {
   const [value, setValue] = useState(initial ?? '')
   return (
-    <OverlayPanel label={title} onDismiss={onCancel}>
+    <OverlayPanel label={title} onDismiss={onCancel} closing={closing}>
       {/* ダイアログの中のどこにフォーカスがあっても Esc / y / n を受ける */}
       {/* oxlint-disable-next-line jsx-a11y/no-noninteractive-element-interactions -- 上のとおり */}
       <form

@@ -1,6 +1,6 @@
 import { invoke } from '@tauri-apps/api/core'
 import { z } from 'zod'
-import { DEFAULT_THEME, THEME_IDS } from '@/lib/theme'
+import { DEFAULT_THEME } from '@/lib/theme'
 
 /**
  * アプリの状態。保管庫の外（Application Support）に置く（docs/vault.md の「方針」）。
@@ -18,8 +18,10 @@ const schema = z.object({
   sidebarSide: z.enum(['left', 'right']).catch('left'),
   preferFullscreen: z.boolean().default(false),
   showKeyGuide: z.boolean().default(true),
-  // 消したテーマが残っていても、状態の全体を捨てずに既定へ戻す
-  theme: z.enum(THEME_IDS).catch(DEFAULT_THEME),
+  // 無い ID なら theme.ts の resolveTheme が既定のテーマにする
+  theme: z.string().catch(DEFAULT_THEME),
+  // 中身は theme.ts の sanitizeCustomThemes で 1 つずつ確かめる
+  customThemes: z.array(z.unknown()).catch([]),
   notes: z.record(z.string(), noteStateSchema).default({}),
 })
 

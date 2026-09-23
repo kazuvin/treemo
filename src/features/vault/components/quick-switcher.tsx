@@ -1,6 +1,7 @@
 import { Command as Cmdk } from 'cmdk'
 import { useState } from 'react'
 import { OverlayPanel } from '@/components/ui/overlay-panel'
+import { usePresence } from '@/components/ui/use-presence'
 import { useVaultStore } from '../stores/vault-store'
 import { toNotePath } from '../utils/file-tree'
 import { fuzzyFilter } from '../utils/fuzzy'
@@ -18,7 +19,8 @@ export function QuickSwitcher({ onOpen, onCreate, onClose }: QuickSwitcherProps)
   const open = useVaultStore((s) => s.switcherOpen)
   const entries = useVaultStore((s) => s.entries)
   const [query, setQuery] = useState('')
-  if (!open) {
+  const { mounted, closing } = usePresence(open)
+  if (!mounted) {
     return null
   }
   const notes = entries.filter((e) => e.kind === 'note').map((e) => e.path)
@@ -33,7 +35,7 @@ export function QuickSwitcher({ onOpen, onCreate, onClose }: QuickSwitcherProps)
     onClose()
   }
   return (
-    <OverlayPanel label="メモを開く" onDismiss={close}>
+    <OverlayPanel label="メモを開く" onDismiss={close} closing={closing}>
       <Cmdk
         label="メモを開く"
         shouldFilter={false}
