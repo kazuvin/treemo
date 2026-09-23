@@ -30,11 +30,9 @@ const theme = EditorView.theme({
     background: 'var(--color-gray-900) !important',
     color: 'var(--color-gray-0) !important',
   },
-  '&:not(.cm-focused) .cm-fat-cursor': {
-    background: 'none !important',
-    outline: '1px solid var(--color-gray-400) !important',
-    color: 'inherit !important',
-  },
+  // codemirror-vim はフォーカスが外れると枠だけのカーソルを残す。フォーカスの場所は
+  // 領域の上端の線で示すので、本文に残る枠は消し忘れにしか見えない
+  '&:not(.cm-focused) .cm-fat-cursor': { visibility: 'hidden' },
   '.cm-selectionBackground, &.cm-focused .cm-selectionBackground, ::selection': {
     backgroundColor: 'var(--color-selected) !important',
   },

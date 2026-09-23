@@ -306,7 +306,10 @@ const appCommands: Command[] = [
   {
     id: 'app.toggleSidebar',
     title: 'サイドバーの表示を切り替える',
-    keys: [{ scope: 'global', sequence: '⌘\\' }],
+    keys: [
+      { scope: 'global', sequence: '⌘\\' },
+      { scope: 'normal', sequence: '<Space>e' },
+    ],
     run: () => {
       const ui = useUiStore.getState()
       ui.setSidebarVisible(!ui.sidebarVisible)
@@ -408,7 +411,6 @@ const appCommands: Command[] = [
     id: 'app.toggleFocus',
     title: 'サイドバーとエディタを行き来する',
     keys: [
-      { scope: 'normal', sequence: '<Space>e' },
       { scope: 'normal', sequence: '<C-w>w' },
       { scope: 'normal', sequence: '<C-w><C-w>' },
     ],
