@@ -427,6 +427,16 @@ Kotoba Dark、Washi と、背景画像を敷く山・川・海・森・夜・焚
   背景を持たないので、本文は写真の上に直に乗る。サイドバーとステータスバーにだけ
   `paper` の濃さで重ね、本文と区切る。写真を持たないプリセットでは 4 つとも空になり、
   見た目は変わらない。
+- **写真の上の文字は、コントラスト比を保てるところまで透かす。** 写真が文字越しに
+  うっすら見えるよう、`applyTheme` が本文（`foreground`）と補助の文字（`subtle-foreground`・
+  `muted-foreground`）の変数を濃さ付きの色で書き直す（`TRANSLUCENT_TEXT`）。濃さは、文字が乗る
+  面（写真の平均の色 `tone` に background を `veil` で重ねた色と、background・card・popover・
+  muted・selected）のどれに重ねても、本文は 7:1（WCAG の AAA）、補助の文字は 4.5:1（AA）を保てる
+  いちばん薄いもの。本文を AA ぎりぎりにしないのは、写真の明暗のむらで平均より不利な場所に
+  文字が来ても 4.5:1 を割りにくくするため。もともと届いていない色は透かさない（今は
+  `muted-foreground` がどの写真でも写真の上で 4.5:1 に届かず、不透明のまま）。
+  `tone` は写真を 28px でぼかして 64×43 に縮めた平均の色（`src/lib/theme.test.ts` が、どの
+  プリセットでも比を保つことを確かめる）。
 - **写真の明るさで color-scheme を決める。** 黒に近い写真（夜・焚き火・雨）は Dark の
   プリセットにし、文字を白系（ランプの 900 が明るい色）にする。明るい写真（山・川・海・森）は
   Light。写真を足すときは 64×43 に縮めたグレースケールの平均（0〜255）を測り、おおよそ
@@ -458,7 +468,7 @@ Kotoba Dark、Washi と、背景画像を敷く山・川・海・森・夜・焚
 
 プリセットを足すときは、`THEMES` に `{ id, label, colorScheme, backdrop, ambience, tokens: preset({ … }) }`
 を足し、ランプ 11 段とアクセント 4 段の色を書く。写真を敷くなら `backdrop` に写真と
-`LIGHT_BACKDROP` / `DARK_BACKDROP`（ぼかしと濃さ）を、敷かないなら `null` を書く。
+その平均の色（`tone`）と `LIGHT_BACKDROP` / `DARK_BACKDROP`（ぼかしと濃さ）を、敷かないなら `null` を書く。
 `ambience` には写真に合わせた BGM（下の「BGM」）の ID を、無ければ `null` を書く。
 
 ### BGM

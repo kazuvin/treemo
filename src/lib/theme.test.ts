@@ -1,16 +1,21 @@
 import { describe, expect, it } from 'vitest'
 import {
   applyTheme,
+  blend,
   COLOR_TOKENS,
+  contrastRatio,
   copyTheme,
   type CustomTheme,
   DEFAULT_THEME,
+  minTextAlpha,
   nextCustomLabel,
   parseTokenValue,
   resolveTheme,
   resolveToken,
   sanitizeCustomThemes,
+  textSurfaces,
   THEMES,
+  TRANSLUCENT_TEXT,
   withAlpha,
   wouldResolve,
 } from './theme'
@@ -64,6 +69,40 @@ describe('背景画像', () => {
     expect(resolveTheme('custom-1', [{ ...custom, base: 'yoru' }]).backdrop).toBe(
       resolveTheme('yoru', []).backdrop,
     )
+  })
+
+  it('写真の上の文字は透かし、画像の無いプリセットに替えると不透明に戻す', () => {
+    const root = document.createElement('html')
+    applyTheme(resolveTheme('yama', []), root)
+    expect(root.style.getPropertyValue('--color-foreground')).toBe('rgba(22, 25, 34, 0.82)')
+    applyTheme(resolveTheme('kotoba', []), root)
+    expect(root.style.getPropertyValue('--color-foreground')).toBe('var(--color-gray-900)')
+  })
+
+  describe.each(THEMES.flatMap((theme) => (theme.backdrop ? [[theme.id, theme] as const] : [])))(
+    '%s の透かした文字',
+    (_, theme) => {
+      const surfaces = textSurfaces(theme.tokens, theme.backdrop)
+      it.each(TRANSLUCENT_TEXT)('$token はどの面の上でも $ratio:1 を保つか、透かさない', (text) => {
+        const color = resolveToken(theme.tokens, text.token) ?? ''
+        const alpha = minTextAlpha(color, surfaces, text.ratio)
+        for (const surface of surfaces) {
+          const ratio = contrastRatio(blend(color, surface, alpha), surface)
+          expect(alpha === 1 || ratio >= text.ratio).toBe(true)
+        }
+      })
+
+      it('本文の文字は透けている', () => {
+        const color = resolveToken(theme.tokens, 'foreground') ?? ''
+        expect(minTextAlpha(color, surfaces, 7)).toBeLessThan(1)
+      })
+    },
+  )
+
+  it('コントラスト比は WCAG 2 の式で測る', () => {
+    expect(contrastRatio('#000000', '#ffffff')).toBeCloseTo(21)
+    expect(contrastRatio('#777777', '#ffffff')).toBeCloseTo(4.48, 2)
+    expect(blend('#000000', '#ffffff', 0.5)).toBe('#808080')
   })
 
   it.each([

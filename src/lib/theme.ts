@@ -129,6 +129,8 @@ export interface Backdrop {
   blur: number
   veil: number
   paper: number
+  /** 写真をぼかしたときの平均の色。文字をどこまで透かせるかをこれで決める */
+  tone: string
 }
 
 const LIGHT_BACKDROP = { blur: 28, veil: 0.55, paper: 0.45 }
@@ -212,7 +214,7 @@ export const THEMES = [
     id: 'yama',
     label: '山',
     colorScheme: 'light',
-    backdrop: { image: yama, ...LIGHT_BACKDROP },
+    backdrop: { image: yama, tone: '#a58b8c', ...LIGHT_BACKDROP },
     ambience: 'yama',
     tokens: preset({
       'gray-0': '#fbfbfd',
@@ -236,7 +238,7 @@ export const THEMES = [
     id: 'kawa',
     label: '川',
     colorScheme: 'light',
-    backdrop: { image: kawa, ...LIGHT_BACKDROP },
+    backdrop: { image: kawa, tone: '#67793a', ...LIGHT_BACKDROP },
     ambience: 'kawa',
     tokens: preset({
       'gray-0': '#fbfcfa',
@@ -260,7 +262,7 @@ export const THEMES = [
     id: 'umi',
     label: '海',
     colorScheme: 'light',
-    backdrop: { image: umi, ...LIGHT_BACKDROP },
+    backdrop: { image: umi, tone: '#a7aca5', ...LIGHT_BACKDROP },
     ambience: 'umi',
     tokens: preset({
       'gray-0': '#fbfcfe',
@@ -284,7 +286,7 @@ export const THEMES = [
     id: 'mori',
     label: '森',
     colorScheme: 'light',
-    backdrop: { image: mori, ...LIGHT_BACKDROP },
+    backdrop: { image: mori, tone: '#5d6c24', ...LIGHT_BACKDROP },
     ambience: 'mori',
     tokens: preset({
       'gray-0': '#fafaf6',
@@ -308,7 +310,7 @@ export const THEMES = [
     id: 'yoru',
     label: '夜',
     colorScheme: 'dark',
-    backdrop: { image: yoru, ...DARK_BACKDROP },
+    backdrop: { image: yoru, tone: '#3a3735', ...DARK_BACKDROP },
     ambience: 'yoru',
     tokens: preset({
       'gray-0': '#0f1411',
@@ -332,7 +334,7 @@ export const THEMES = [
     id: 'takibi',
     label: '焚き火',
     colorScheme: 'dark',
-    backdrop: { image: takibi, ...DARK_BACKDROP },
+    backdrop: { image: takibi, tone: '#23291f', ...DARK_BACKDROP },
     ambience: 'takibi',
     tokens: preset({
       'gray-0': '#15110e',
@@ -356,7 +358,7 @@ export const THEMES = [
     id: 'ame',
     label: '雨',
     colorScheme: 'dark',
-    backdrop: { image: ame, ...DARK_BACKDROP },
+    backdrop: { image: ame, tone: '#4e4f43', ...DARK_BACKDROP },
     ambience: 'ame',
     tokens: preset({
       'gray-0': '#10151b',
@@ -561,6 +563,64 @@ export function withAlpha(hex: string, alpha: number): string {
   return `rgba(${r}, ${g}, ${b}, ${Number(((a / 255) * alpha).toFixed(3))})`
 }
 
+function channels(hex: string): [number, number, number] {
+  const digits = hex.length === 4 ? hex.slice(1).replaceAll(/./g, (c) => c + c) : hex.slice(1)
+  const [r = 0, g = 0, b = 0] = (digits.match(/../g) ?? []).map((pair) => Number.parseInt(pair, 16))
+  return [r, g, b]
+}
+
+function luminance(hex: string): number {
+  const [r, g, b] = channels(hex).map((c) => {
+    const v = c / 255
+    return v <= 0.04045 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4
+  })
+  return 0.2126 * (r ?? 0) + 0.7152 * (g ?? 0) + 0.0722 * (b ?? 0)
+}
+
+/** WCAG 2 のコントラスト比（1〜21） */
+export function contrastRatio(a: string, b: string): number {
+  const [dark, light] = [luminance(a), luminance(b)].sort((x, y) => x - y)
+  return ((light ?? 0) + 0.05) / ((dark ?? 0) + 0.05)
+}
+
+/** top を濃さ alpha で bottom に重ねた色。CSS と同じく sRGB の値のまま混ぜる */
+export function blend(top: string, bottom: string, alpha: number): string {
+  const b = channels(bottom)
+  const mixed = channels(top).map((c, i) => Math.round(c * alpha + (b[i] ?? 0) * (1 - alpha)))
+  return `#${mixed.map((c) => c.toString(16).padStart(2, '0')).join('')}`
+}
+
+/**
+ * 写真の上で透かす文字と、どの面の上でも保つコントラスト比。本文は AAA の 7:1 にして、
+ * 写真の明暗のむらで平均より不利な場所に来ても AA の 4.5:1 を割りにくくする。
+ * 補助の文字は AA の 4.5:1。もともとそれに届かない色は透かさない
+ */
+export const TRANSLUCENT_TEXT = [
+  { token: 'foreground', ratio: 7 },
+  { token: 'subtle-foreground', ratio: 4.5 },
+  { token: 'muted-foreground', ratio: 4.5 },
+] as const satisfies readonly { token: ColorToken; ratio: number }[]
+
+/** 文字が乗る面。写真の上（veil 越し）と、不透明な面（パネル・ノード・選択） */
+export function textSurfaces(tokens: TokenMap, backdrop: Backdrop): string[] {
+  const background = resolveToken(tokens, 'background') ?? '#ffffff'
+  const opaque = (['background', 'card', 'popover', 'muted', 'selected'] as const).flatMap(
+    (name) => resolveToken(tokens, name) ?? [],
+  )
+  return [blend(background, backdrop.tone, backdrop.veil), ...opaque]
+}
+
+/** text をどの面に重ねても ratio を保てる、いちばん薄い濃さ（0.01 刻み） */
+export function minTextAlpha(text: string, surfaces: readonly string[], ratio: number): number {
+  for (let step = 1; step < 100; step++) {
+    const alpha = step / 100
+    if (surfaces.every((surface) => contrastRatio(blend(text, surface, alpha), surface) >= ratio)) {
+      return alpha
+    }
+  }
+  return 1
+}
+
 function cssValue(value: TokenValue): string {
   return HEX.test(value) ? value : `var(--color-${value})`
 }
@@ -576,6 +636,16 @@ export function applyTheme(
   }
   const background = resolveToken(theme.tokens, 'background') ?? '#ffffff'
   const { backdrop } = theme
+  if (backdrop) {
+    const surfaces = textSurfaces(theme.tokens, backdrop)
+    for (const { token, ratio } of TRANSLUCENT_TEXT) {
+      const color = resolveToken(theme.tokens, token)
+      if (color) {
+        const alpha = minTextAlpha(color, surfaces, ratio)
+        root.style.setProperty(`--color-${token}`, alpha < 1 ? withAlpha(color, alpha) : color)
+      }
+    }
+  }
   root.style.setProperty('--backdrop-image', backdrop ? `url("${backdrop.image}")` : 'none')
   root.style.setProperty('--backdrop-blur', `${backdrop?.blur ?? 0}px`)
   root.style.setProperty(
