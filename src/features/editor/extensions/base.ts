@@ -52,6 +52,26 @@ const theme = EditorView.theme({
   '.cm-panels input': { fontFamily: 'var(--font-mono)', outline: 'none' },
 })
 
+/**
+ * 最初と最後の行へのスクロールは端まで送る。既定はカーソルが見えるところで止まるので、
+ * .cm-content の上下の余白（と見出しの上の余白）が隠れたままになる
+ */
+const scrollToEdges = EditorView.scrollHandler.of((view, range, options) => {
+  if (options.y !== 'nearest') {
+    return false
+  }
+  const line = view.state.doc.lineAt(range.head).number
+  if (line === 1) {
+    view.scrollDOM.scrollTop = 0
+    return true
+  }
+  if (line === view.state.doc.lines) {
+    view.scrollDOM.scrollTop = view.scrollDOM.scrollHeight
+    return true
+  }
+  return false
+})
+
 const highlight = HighlightStyle.define([
   { tag: tags.heading, fontWeight: 'var(--font-weight-bold)' },
   { tag: tags.strong, fontWeight: 'var(--font-weight-bold)' },
@@ -75,6 +95,7 @@ export function baseExtensions(): Extension[] {
     syntaxHighlighting(highlight),
     EditorView.lineWrapping,
     keymap.of([...defaultKeymap, ...historyKeymap]),
+    scrollToEdges,
     theme,
   ]
 }
