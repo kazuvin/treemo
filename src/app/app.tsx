@@ -10,13 +10,13 @@ import { WhichKey } from '@/features/commands/components/which-key'
 import { useKeyDispatcher } from '@/features/commands/hooks/use-key-dispatcher'
 import { useCommandStore } from '@/features/commands/stores/command-store'
 import { keyLabel } from '@/features/commands/utils/key-label'
+import { DiagramFullscreen } from '@/features/diagram/components/diagram-fullscreen'
+import { treeExtension } from '@/features/diagram/extensions/tree-extension'
+import { useDiagramStore } from '@/features/diagram/stores/diagram-store'
 import { Editor, type EditorHandle } from '@/features/editor/components/editor'
 import { tagClickHandler } from '@/features/editor/extensions/front-matter'
 import { noteTitleClickHandler } from '@/features/editor/extensions/note-title'
 import { applyVimConfig, setExHandlers } from '@/features/editor/extensions/vim-bridge'
-import { TreeFullscreen } from '@/features/tree/components/tree-fullscreen'
-import { treeExtension } from '@/features/tree/extensions/tree-extension'
-import { useTreeStore } from '@/features/tree/stores/tree-store'
 import { onVaultChanged } from '@/features/vault/api/vault'
 import { FileTree } from '@/features/vault/components/file-tree'
 import { QuickSwitcher } from '@/features/vault/components/quick-switcher'
@@ -134,8 +134,8 @@ async function boot(): Promise<void> {
   useUiStore.getState().setBgm(sanitizeBgm(state.bgm))
   useUiStore.getState().setBgmVolume(sanitizeBgmVolume(state.bgmVolume))
   setAmbienceVolume(useUiStore.getState().bgmVolume)
-  useTreeStore.getState().setPreferFullscreen(state.preferFullscreen)
-  useTreeStore.getState().setShowKeyGuide(state.showKeyGuide)
+  useDiagramStore.getState().setPreferFullscreen(state.preferFullscreen)
+  useDiagramStore.getState().setShowKeyGuide(state.showKeyGuide)
   const customThemes = sanitizeCustomThemes(state.customThemes)
   useThemeStore.getState().setCustomThemes(customThemes)
   useThemeStore.getState().setTheme(resolveTheme(state.theme, customThemes).id)
@@ -190,15 +190,15 @@ async function boot(): Promise<void> {
     }
   })
   syncAmbience()
-  useTreeStore.subscribe((tree, prev) => {
+  useDiagramStore.subscribe((diagram, prev) => {
     if (
-      tree.preferFullscreen !== prev.preferFullscreen ||
-      tree.showKeyGuide !== prev.showKeyGuide
+      diagram.preferFullscreen !== prev.preferFullscreen ||
+      diagram.showKeyGuide !== prev.showKeyGuide
     ) {
       updatePersistedState((s) => ({
         ...s,
-        preferFullscreen: tree.preferFullscreen,
-        showKeyGuide: tree.showKeyGuide,
+        preferFullscreen: diagram.preferFullscreen,
+        showKeyGuide: diagram.showKeyGuide,
       }))
     }
   })
@@ -340,7 +340,7 @@ export function App() {
               </p>
             </div>
           )}
-          <TreeFullscreen view={view} />
+          <DiagramFullscreen view={view} />
           <WhichKey getContext={getContext} getScopes={getScopes} />
         </main>
       </div>

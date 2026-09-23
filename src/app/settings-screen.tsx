@@ -3,7 +3,7 @@ import { Kbd } from '@/components/ui/kbd'
 import { OverlayPanel } from '@/components/ui/overlay-panel'
 import { Select } from '@/components/ui/select'
 import { KeybindingEditor } from '@/features/commands/components/keybinding-editor'
-import { useTreeStore } from '@/features/tree/stores/tree-store'
+import { useDiagramStore } from '@/features/diagram/stores/diagram-store'
 import { useVaultStore } from '@/features/vault/stores/vault-store'
 import { BGM_CHOICES, BGM_VOLUMES, bgmChoiceLabel, DEFAULT_BGM_VOLUME } from '@/lib/ambience'
 import { cn } from '@/lib/cn'
@@ -48,8 +48,8 @@ function GeneralSettings({ onClose }: { onClose: () => void }) {
   const setBgm = useUiStore((s) => s.setBgm)
   const bgmVolume = useUiStore((s) => s.bgmVolume)
   const setBgmVolume = useUiStore((s) => s.setBgmVolume)
-  const showKeyGuide = useTreeStore((s) => s.showKeyGuide)
-  const setShowKeyGuide = useTreeStore((s) => s.setShowKeyGuide)
+  const showKeyGuide = useDiagramStore((s) => s.showKeyGuide)
+  const setShowKeyGuide = useDiagramStore((s) => s.setShowKeyGuide)
   const vault = useVaultStore((s) => s.vault)
 
   useEffect(() => {
@@ -93,7 +93,7 @@ function GeneralSettings({ onClose }: { onClose: () => void }) {
       })),
     },
     {
-      label: 'TREE モードの次のキーの案内',
+      label: 'DIAGRAM モードの次のキーの案内',
       options: [true, false].map((show) => ({
         label: show ? '出す' : '出さない',
         selected: showKeyGuide === show,

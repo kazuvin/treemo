@@ -1,7 +1,7 @@
 import { EditorState, type Extension, type Range, StateField } from '@codemirror/state'
 import { Decoration, type DecorationSet, EditorView, ViewPlugin } from '@codemirror/view'
 import { useModeStore } from '@/stores/mode-store'
-import { useTreeStore } from '../stores/tree-store'
+import { useDiagramStore } from '../stores/diagram-store'
 import { collapsedIds } from '../utils/ops'
 import { enterTreeSpec } from './tree-actions'
 import {
@@ -27,9 +27,9 @@ function buildDecorations(state: EditorState): DecorationSet {
       continue
     }
     const active = ui.active?.from === block.from ? ui.active : null
-    let status: 'idle' | 'selected' | 'tree' | 'fullscreen' = 'idle'
+    let status: 'idle' | 'selected' | 'diagram' | 'fullscreen' = 'idle'
     if (active) {
-      status = active.fullscreen ? 'fullscreen' : 'tree'
+      status = active.fullscreen ? 'fullscreen' : 'diagram'
     } else if (onBlock?.from === block.from) {
       status = 'selected'
     }
@@ -72,14 +72,14 @@ function publish(state: EditorState): void {
   const ui = state.field(treeUiField)
   const mode = useModeStore.getState()
   const onBlock = blockAtCursor(state) !== null
-  if (mode.tree !== (ui.active !== null)) {
-    mode.setTree(ui.active !== null)
+  if (mode.diagram !== (ui.active !== null)) {
+    mode.setDiagram(ui.active !== null)
   }
   if (mode.onTreeBlock !== onBlock) {
     mode.setOnTreeBlock(onBlock)
   }
   const block = activeBlock(state)
-  const tree = useTreeStore.getState()
+  const tree = useDiagramStore.getState()
   if (ui.active && block) {
     tree.setActive({
       from: block.from,
@@ -107,15 +107,15 @@ const publisher = ViewPlugin.define((view) => {
       }
     },
     destroy: () => {
-      useModeStore.getState().setTree(false)
+      useModeStore.getState().setDiagram(false)
       useModeStore.getState().setOnTreeBlock(false)
-      useTreeStore.getState().setActive(null)
+      useDiagramStore.getState().setActive(null)
     },
   }
 })
 
 /**
- * Vim の検索などでカーソルがノードの行に置かれたら、そのノードを選んで TREE (NORMAL) に入る
+ * Vim の検索などでカーソルがノードの行に置かれたら、そのノードを選んで DIAGRAM (NORMAL) に入る
  * （docs/tree-block.md の「検索」）。読めない行があるブロックでは入れないので、当たりを示すだけにする
  */
 const enterOnHit = EditorState.transactionFilter.of((tr) => {

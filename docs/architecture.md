@@ -12,7 +12,7 @@ Treemo をどう組み立てるか。何を作るかは [要件定義](requireme
 │   └─ features                                            │
 │       vault   ─ ファイル一覧・スイッチャー・自動保存     │
 │       editor  ─ CodeMirror 6 + Vim + ライブプレビュー    │
-│       tree    ─ ツリーブロックの解析・配置・TREE モード  │
+│       diagram ─ 図のブロック（今はツリー）・DIAGRAM モード│
 │       commands─ コマンド登録・パレット・which-key・ヒント│
 └───────────────┬──────────────────────────────────────────┘
                 │ invoke（コマンド） / event（vault://changed）
@@ -47,13 +47,13 @@ Treemo をどう組み立てるか。何を作るかは [要件定義](requireme
 
 - **開いているメモの正本は CodeMirror の文書（`EditorState.doc`）だけ。** React の state や
   Zustand にメモの本文を複製しない。
-- **TREE モードもテキストを書き換える。** ノードの操作は、該当ブロックを正規形の
+- **DIAGRAM モードもテキストを書き換える。** ノードの操作は、該当ブロックを正規形の
   テキストに置き換える CodeMirror のトランザクションとして発行する
   （[ツリーブロック](tree-block.md) の「書き戻し」）。
-  - 取り消しの履歴が 1 本になり、TREE モードの中と外で `u` が同じように効く。
+  - 取り消しの履歴が 1 本になり、DIAGRAM モードの中と外で `u` が同じように効く。
   - 自動保存、外部変更の取り込み、衝突の判定が、テキストだけを見れば済む。
 - ツリーは文書から毎回作り直す値として扱う。文書が変わるたびに行を走査してフェンスを探し
-  （`features/tree/utils/find-blocks.ts`）、変わったブロックだけを解析し直す（文字列をキーに
+  （`features/diagram/utils/find-blocks.ts`）、変わったブロックだけを解析し直す（文字列をキーに
   解析結果を覚えておく）。
   - 構文木を使わないのは、構文木が見えている範囲の近くまでしか解析されていないことがあり、
     ブロックの Decoration（メモ全体に対して必要）の元にできないため。1 万行の走査で 1 文字の
@@ -70,7 +70,7 @@ Treemo をどう組み立てるか。何を作るかは [要件定義](requireme
   本文のエディタのテーマは子孫セレクタで効くため、小さなエディタの側で余白などを打ち消している。
 - 全画面の表示は、エディタの上に重ねる React の画面にする。中身はウィジェットと同じ
   部品を使い、状態も同じもの（次節）を見る。
-- レイアウトは `(ツリー, ノードの大きさ) → 位置` の純粋な関数（`features/tree/utils/`）。
+- レイアウトは `(ツリー, ノードの大きさ) → 位置` の純粋な関数（`features/diagram/utils/`）。
   ノードの大きさは描いてから測る。大きさは中身だけで決まるので中身をキーに覚え、操作で
   ノードの ID がずれても測り直さない。
 
@@ -79,10 +79,10 @@ Treemo をどう組み立てるか。何を作るかは [要件定義](requireme
 | 状態 | 置き場所 | 理由 |
 | --- | --- | --- |
 | メモの本文 | CodeMirror の文書 | 正本を 1 つにする |
-| TREE モードで選んでいるノード、全画面かどうか | CodeMirror の `StateField` | 文書の変更と同じトランザクションで動かせる。ノードの位置は文書の変更に合わせて付け替える |
+| DIAGRAM モードで選んでいるノード、全画面かどうか | CodeMirror の `StateField` | 文書の変更と同じトランザクションで動かせる。ノードの位置は文書の変更に合わせて付け替える |
 | 折りたたみ（見出し・リスト・ノード） | CodeMirror の `StateField` + アプリの状態として保存 | ファイルには書かない（要件の「持ち運べること」） |
-| 今のモード（NORMAL / INSERT / VISUAL / TREE の NORMAL と INSERT）、ブロックの上か、フォーカスのある領域 | `src/stores/mode-store.ts`（Zustand） | ステータスバー・which-key・キーの振り分けなど、エディタの外が読む。本文のエディタとツリーの拡張が書く |
-| TREE モード中のブロックの写し、全画面・案内の設定 | `features/tree/stores/tree-store.ts` | 全画面の表示が読む。正本は `StateField` の方で、拡張がここへ流す |
+| 今のモード（NORMAL / INSERT / VISUAL / DIAGRAM の NORMAL と INSERT）、ブロックの上か、フォーカスのある領域 | `src/stores/mode-store.ts`（Zustand） | ステータスバー・which-key・キーの振り分けなど、エディタの外が読む。本文のエディタとツリーの拡張が書く |
+| DIAGRAM モード中のブロックの写し、全画面・案内の設定 | `features/diagram/stores/diagram-store.ts` | 全画面の表示が読む。正本は `StateField` の方で、拡張がここへ流す |
 | 選んでいるテーマ、カスタムのプリセット | `src/stores/theme-store.ts` + アプリの状態として保存 | app が購読して `<html>` の `data-theme` と色の変数に書く（[Kotoba](kotoba-design-system.md) の「テーマ」） |
 | ステータスバーの短い知らせ | `src/stores/status-store.ts` | 次のキーで消える。消えては困る知らせ（衝突・保存の失敗）はここに出さない |
 | アプリの状態の保存（最後の保管庫、折りたたみなど） | `src/app/persisted-state.ts` → Rust の `app_state_read` / `app_state_write` | 保管庫の外（Application Support）に JSON で置く |
@@ -102,7 +102,7 @@ Treemo をどう組み立てるか。何を作るかは [要件定義](requireme
 ```ts
 // src/lib/command.ts（共有層。どの feature からも使う）
 interface Command {
-  id: string // 'tree.addChild' のように <feature>.<動作>
+  id: string // 'diagram.addChild' のように <feature>.<動作>
   title: string // パレットに出す名前
   keys?: { scope: KeyScope; sequence: string; passive?: boolean }[] // 'Tab'、'<Space>tn' など
   when?: (ctx: CommandContext) => boolean // 使える状況
@@ -110,7 +110,7 @@ interface Command {
 }
 ```
 
-- `scope` はキーが効く範囲（`global` / `normal` / `editor` / `sidebar` / `block` / `tree`）。
+- `scope` はキーが効く範囲（`global` / `normal` / `editor` / `sidebar` / `block` / `diagram`）。
   意味は [キー操作](keybindings.md) の「コマンドとキーの範囲」。
 - キーはすべて `features/commands/hooks/use-key-dispatcher.ts` が `window` の capture で先に
   受ける。今どの範囲が効くかは `src/app/keys.ts` が mode-store から決める。コマンドに
@@ -132,7 +132,7 @@ feature は他の feature を import できない。エディタにツリーの�
 ```tsx
 // src/app/app.tsx
 import { Editor } from '@/features/editor/components/editor'
-import { treeExtension } from '@/features/tree/extensions/tree-extension'
+import { treeExtension } from '@/features/diagram/extensions/tree-extension'
 
 const editorExtensions = [treeExtension(), notes.extension]
 <Editor extensions={editorExtensions} onReady={attachEditor} />
@@ -144,7 +144,7 @@ const editorExtensions = [treeExtension(), notes.extension]
 
 - `features/editor` は、外から CodeMirror の拡張を受け取れるようにだけしておく。
   ツリーを知らない。
-- `features/tree` は、CodeMirror の拡張を返す関数を公開する。エディタの React
+- `features/diagram` は、CodeMirror の拡張を返す関数を公開する。エディタの React
   コンポーネントを知らない。
 
 ## 使っているライブラリ

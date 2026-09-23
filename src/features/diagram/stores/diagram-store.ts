@@ -2,7 +2,7 @@ import { create } from 'zustand'
 import type { Editing } from '../extensions/tree-state'
 import type { StrayLine, TreeNode } from '../types/tree'
 
-/** TREE モード中のブロック。全画面の表示がこれを読む */
+/** DIAGRAM モード中のブロック。全画面の表示がこれを読む */
 interface ActiveSnapshot {
   from: number
   roots: TreeNode[]
@@ -12,7 +12,7 @@ interface ActiveSnapshot {
   fullscreen: boolean
 }
 
-interface TreeStoreState {
+interface DiagramStoreState {
   active: ActiveSnapshot | null
   /** 最後に使った表示（F-TREE-5）。app が保存する */
   preferFullscreen: boolean
@@ -23,7 +23,7 @@ interface TreeStoreState {
   setShowKeyGuide: (showKeyGuide: boolean) => void
 }
 
-export const useTreeStore = create<TreeStoreState>()((set) => ({
+export const useDiagramStore = create<DiagramStoreState>()((set) => ({
   active: null,
   preferFullscreen: false,
   showKeyGuide: true,

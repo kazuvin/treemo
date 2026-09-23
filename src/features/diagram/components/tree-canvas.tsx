@@ -45,9 +45,9 @@ function countDescendants(node: TreeNode): number {
 
 interface TreeCanvasProps {
   roots: TreeNode[]
-  /** 選んでいるノードの ID。TREE モードでなければ null */
+  /** 選んでいるノードの ID。DIAGRAM モードでなければ null */
   selectedId: string | null
-  /** 検索で当たったノードの ID。ブロックを選んでいるだけのとき（TREE モードの外）に示す */
+  /** 検索で当たったノードの ID。ブロックを選んでいるだけのとき（DIAGRAM モードの外）に示す */
   hitId?: string | null
   /** 中身の中で光らせる検索 */
   search?: RegExp | null
@@ -79,7 +79,7 @@ export function TreeCanvas({
   // 大きさは中身だけで決まるので、中身をキーに覚える。操作でノードの ID がずれても測り直さずに済む
   const [sizes, setSizes] = useState<ReadonlyMap<string, Size>>(new Map())
   const [measureTick, setMeasureTick] = useState(0)
-  // 空のまま Enter を押すとノードは消えて TREE (NORMAL) に戻り、Tab は何もしないので、
+  // 空のまま Enter を押すとノードは消えて DIAGRAM (NORMAL) に戻り、Tab は何もしないので、
   // そのときは +Enter と +Tab を出さない
   const [editingHasText, setEditingHasText] = useState(false)
   const elements = useRef(new Map<string, HTMLElement>())
@@ -99,7 +99,7 @@ export function TreeCanvas({
   const nodes = visibleNodes(roots)
   const tweened = useTweenedRects(nodes, layout.rects)
   const selectedRect = selectedId ? tweened.rect(selectedId) : undefined
-  // TREE (INSERT) では Enter が下の兄弟、Tab が子（docs/keybindings.md の「ノード編集」）
+  // DIAGRAM (INSERT) では Enter が下の兄弟、Tab が子（docs/keybindings.md の「ノード編集」）
   const siblingKey = editing ? 'Enter' : 'o'
   const guideHidden = editing !== null && !editingHasText
   const selectedNode = selectedId ? getNode(roots, toPath(selectedId)) : null

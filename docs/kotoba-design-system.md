@@ -394,7 +394,7 @@ kazuvin.me（Next.js）に取り込んだものを、トークン層と文書ご
   区別する（[要件定義](requirements.md) の F-EDIT-2）。本文の上のメモの名前（F-EDIT-6）だけは
   Obsidian や Notion に合わせて `text-title` で大きく出す。長文を等幅書体で書くことになるので、
   使ってみて読みにくければ、この制約ごと見直す。
-- **アクセント色は TREE モードの枠にも使う。** 「今キー入力を受け取っている場所」を示す
+- **アクセント色は DIAGRAM モードの枠にも使う。** 「今キー入力を受け取っている場所」を示す
   フォーカスの一種として扱う（[キー操作](keybindings.md) の「モード」）。
 - **`src/lib/cn.ts` は kazuvin.me と同じ。** `text-2xs` と `text-mark`（と Treemo で足した `text-title`）を `font-size` として
   登録している理由はそちらの経緯のまま。回帰テストは `src/lib/cn.test.ts`。

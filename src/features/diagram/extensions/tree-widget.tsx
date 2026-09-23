@@ -2,7 +2,7 @@ import { type EditorView, WidgetType } from '@codemirror/view'
 import { flushSync } from 'react-dom'
 import { createRoot, type Root } from 'react-dom/client'
 import { type BlockStatus, TreeBlockView } from '../components/tree-block-view'
-import { useTreeStore } from '../stores/tree-store'
+import { useDiagramStore } from '../stores/diagram-store'
 import type { StrayLine, TreeNode } from '../types/tree'
 import { addNodeAt, commitEdit, editNode, selectBlock, selectNode } from './tree-actions'
 import type { Editing } from './tree-state'
@@ -27,7 +27,7 @@ const roots = new WeakMap<HTMLElement, Root>()
 const observers = new WeakMap<HTMLElement, ResizeObserver>()
 
 function GuideAwareView({ view, props }: { view: EditorView; props: TreeWidgetProps }) {
-  const showGuide = useTreeStore((s) => s.showKeyGuide)
+  const showGuide = useDiagramStore((s) => s.showKeyGuide)
   return (
     <TreeBlockView
       status={props.status}

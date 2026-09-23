@@ -29,6 +29,14 @@ describe('parseKeyOverrides', () => {
     })
   })
 
+  it('TREE モードのころの ID と範囲を DIAGRAM に読み替える', () => {
+    const result = parseKeyOverrides('{ "tree.addChild": [{ "scope": "tree", "sequence": "A" }] }')
+    expect(result).toEqual({
+      ok: true,
+      overrides: { 'diagram.addChild': [{ scope: 'diagram', sequence: 'A' }] },
+    })
+  })
+
   it('JSON として読めなければ理由を返す', () => {
     expect(parseKeyOverrides('{').ok).toBe(false)
   })

@@ -4,7 +4,7 @@ import type { EditorView } from '@codemirror/view'
  * キーが効く範囲。どの範囲が今有効かは app が mode-store から決める。
  * 範囲ごとの意味は docs/keybindings.md の「コマンドとキーの範囲」。
  */
-export const KEY_SCOPES = ['global', 'normal', 'editor', 'sidebar', 'block', 'tree'] as const
+export const KEY_SCOPES = ['global', 'normal', 'editor', 'sidebar', 'block', 'diagram'] as const
 
 export type KeyScope = (typeof KEY_SCOPES)[number]
 
@@ -24,7 +24,7 @@ export interface CommandContext {
 }
 
 export interface Command {
-  /** '<feature>.<動作>'。例: 'tree.addChild' */
+  /** '<feature>.<動作>'。例: 'diagram.addChild' */
   id: string
   /** パレットに出す名前 */
   title: string

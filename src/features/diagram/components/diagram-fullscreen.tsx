@@ -1,21 +1,21 @@
 import type { EditorView } from '@codemirror/view'
 import { KeyHints } from '@/components/ui/key-hints'
 import { addNodeAt, commitEdit, editNode, selectNode } from '../extensions/tree-actions'
-import { useTreeStore } from '../stores/tree-store'
+import { useDiagramStore } from '../stores/diagram-store'
 import { KeyGuide } from './key-guide'
 import { TreeCanvas } from './tree-canvas'
 
-/** TREE モードの全画面表示（F-TREE-5）。エディタの上に重ね、同じ状態を見る */
-export function TreeFullscreen({ view }: { view: EditorView | null }) {
-  const active = useTreeStore((s) => s.active)
-  const showGuide = useTreeStore((s) => s.showKeyGuide)
+/** DIAGRAM モードの全画面表示（F-TREE-5）。エディタの上に重ね、同じ状態を見る */
+export function DiagramFullscreen({ view }: { view: EditorView | null }) {
+  const active = useDiagramStore((s) => s.active)
+  const showGuide = useDiagramStore((s) => s.showKeyGuide)
   if (!view || !active?.fullscreen) {
     return null
   }
   return (
     <div
       role="presentation"
-      data-tree-active="true"
+      data-diagram-active="true"
       className="absolute inset-0 z-10 flex flex-col bg-background outline-2 -outline-offset-2 outline-selected-border"
       onMouseDown={(event) => {
         // キー入力は本文のエディタが受け続ける

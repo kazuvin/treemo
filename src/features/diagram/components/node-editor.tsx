@@ -38,8 +38,8 @@ const theme = EditorView.theme({
 })
 
 /**
- * ノードの上に開く小さなエディタ（F-TREE-4）。TREE の INSERT にあたり、Esc で確定して
- * TREE の NORMAL へ戻る。Enter / Tab はマインドマップの道具と同じ意味にしてある
+ * ノードの上に開く小さなエディタ（F-TREE-4）。DIAGRAM の INSERT にあたり、Esc で確定して
+ * DIAGRAM の NORMAL へ戻る。Enter / Tab はマインドマップの道具と同じ意味にしてある
  * （docs/keybindings.md の「ノード編集」）。
  */
 export function NodeEditor({ initial, cursor, onCommit, onHasTextChange }: NodeEditorProps) {

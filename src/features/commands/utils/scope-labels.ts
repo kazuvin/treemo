@@ -6,5 +6,5 @@ export const SCOPE_LABELS: Record<KeyScope, string> = {
   editor: 'エディタ',
   sidebar: 'サイドバー',
   block: 'ツリーブロックの上',
-  tree: 'TREE (NORMAL)',
+  diagram: 'DIAGRAM (NORMAL)',
 }

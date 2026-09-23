@@ -179,7 +179,7 @@ const clearHighlightAfterSearch = ViewPlugin.define((view) => {
       Vim.handleEx(cm as Parameters<typeof Vim.handleEx>[0], 'nohlsearch')
     }
   }
-  // TREE モードのキーはエディタの外（全画面）でも受けるので、文書全体で見る
+  // DIAGRAM モードのキーはエディタの外（全画面）でも受けるので、文書全体で見る
   document.addEventListener('keydown', onKey, true)
   return {
     update: (update) => {

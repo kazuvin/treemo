@@ -221,7 +221,7 @@ export function nodeLineSpan(
   return [line, (next ?? closing) - 1]
 }
 
-/** カーソルをブロックの中の行に置いても、TREE モードに入らせない（TREE モードの n / N が使う） */
+/** カーソルをブロックの中の行に置いても、DIAGRAM モードに入らせない（DIAGRAM モードの n / N が使う） */
 export const keepCursorInBlock = Annotation.define<boolean>()
 
 /** 行はノードの並び（行きがけ順）と同じ順なので、その行より前で最後に始まるノードを探す */

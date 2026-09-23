@@ -10,21 +10,21 @@ import {
   commitEdit,
   deleteSubtree,
   editNode,
-  enterTree,
-  exitTree,
+  enterDiagram,
+  exitDiagram,
   indent,
   insertEmptyBlock,
   isOnTreeBlock,
-  isTreeActive,
+  isDiagramActive,
   moveSelection,
   outdent,
   paste,
-  searchInTree,
+  searchInDiagram,
   selectLastLeaf,
   swap,
   toggleFold,
   toggleSource,
-  undoInTree,
+  undoInDiagram,
   yankSubtree,
 } from './tree-actions'
 import { treeExtension } from './tree-extension'
@@ -68,37 +68,37 @@ afterEach(() => {
 })
 
 describe('entering and leaving', () => {
-  it('enters TREE mode from the block and selects the first root', () => {
+  it('enters DIAGRAM mode from the block and selects the first root', () => {
     view = setup('```tree\n- a\n  - b\n```')
     expect(isOnTreeBlock(view.state)).toBe(true)
-    expect(enterTree(view)).toBe(true)
-    expect(isTreeActive(view.state)).toBe(true)
+    expect(enterDiagram(view)).toBe(true)
+    expect(isDiagramActive(view.state)).toBe(true)
     expect(selected(view)).toEqual([0])
   })
 
   it('refuses blocks with stray lines and explains why', () => {
     view = setup('```tree\nintro\n- a\n```')
-    expect(enterTree(view)).toBe(false)
-    expect(isTreeActive(view.state)).toBe(false)
+    expect(enterDiagram(view)).toBe(false)
+    expect(isDiagramActive(view.state)).toBe(false)
     expect(useStatusStore.getState().message).toContain('gs')
   })
 
   it('does not touch the text when only moving around', () => {
     const block = '```tree\n* a\n    + b\n* c\n```'
     view = setup(block)
-    enterTree(view)
+    enterDiagram(view)
     moveSelection(view, 'child')
     moveSelection(view, 'parent')
     moveSelection(view, 'down')
-    exitTree(view)
+    exitDiagram(view)
     expect(blockText(view)).toBe(block)
-    expect(isTreeActive(view.state)).toBe(false)
+    expect(isDiagramActive(view.state)).toBe(false)
   })
 
   it('puts the cursor after the block when leaving', () => {
     view = setup('```tree\n- a\n```')
-    enterTree(view)
-    exitTree(view)
+    enterDiagram(view)
+    exitDiagram(view)
     const line = view.state.doc.lineAt(view.state.selection.main.head)
     expect(line.text).toBe('後ろの段落')
   })
@@ -107,7 +107,7 @@ describe('entering and leaving', () => {
 describe('building the tree', () => {
   it('adds a sibling, writes it and rewrites the block in canonical form', async () => {
     view = setup('```tree layout=lr\n* a\n```')
-    enterTree(view)
+    enterDiagram(view)
     addSibling(view, 'below')
     expect(view.state.field(treeUiField).active?.editing).toMatchObject({ path: [1], isNew: true })
     commitEdit(view, 'b  ', 'done')
@@ -118,7 +118,7 @@ describe('building the tree', () => {
 
   it('continues with the next sibling on Enter and drops it when left empty', () => {
     view = setup('```tree\n- a\n```')
-    enterTree(view)
+    enterDiagram(view)
     addChild(view)
     commitEdit(view, 'child', 'sibling')
     expect(view.state.field(treeUiField).active?.editing?.path).toEqual([0, 1])
@@ -129,7 +129,7 @@ describe('building the tree', () => {
 
   it('removes a new node left empty with Esc', () => {
     view = setup('```tree\n- a\n```')
-    enterTree(view)
+    enterDiagram(view)
     addSibling(view, 'above')
     commitEdit(view, '', 'done')
     expect(blockText(view)).toBe('```tree\n- a\n```')
@@ -137,7 +137,7 @@ describe('building the tree', () => {
 
   it('removes an existing leaf emptied with Esc', () => {
     view = setup('```tree\n- a\n- b\n```')
-    enterTree(view)
+    enterDiagram(view)
     moveSelection(view, 'down')
     editNode(view, 'end')
     commitEdit(view, '   ', 'done')
@@ -146,7 +146,7 @@ describe('building the tree', () => {
 
   it('restores an emptied node that has children instead of dropping its subtree', () => {
     view = setup('```tree\n- a\n  - b\n```')
-    enterTree(view)
+    enterDiagram(view)
     editNode(view, 'end')
     commitEdit(view, ' ', 'sibling')
     expect(blockText(view)).toBe('```tree\n- a\n  - b\n```')
@@ -155,7 +155,7 @@ describe('building the tree', () => {
 
   it('keeps multi-line content', () => {
     view = setup('```tree\n- a\n```')
-    enterTree(view)
+    enterDiagram(view)
     addChild(view)
     commitEdit(view, '1 行目\n\n2 行目', 'done')
     expect(blockText(view)).toBe('```tree\n- a\n  - 1 行目\n    2 行目\n```')
@@ -163,7 +163,7 @@ describe('building the tree', () => {
 
   it('indents, outdents and swaps subtrees', () => {
     view = setup('```tree\n- a\n- b\n  - b1\n- c\n```')
-    enterTree(view)
+    enterDiagram(view)
     moveSelection(view, 'down')
     indent(view)
     expect(blockText(view)).toBe('```tree\n- a\n  - b\n    - b1\n- c\n```')
@@ -176,7 +176,7 @@ describe('building the tree', () => {
 
   it('deletes into the register and pastes back', () => {
     view = setup('```tree\n- a\n  - a1\n- b\n```')
-    enterTree(view)
+    enterDiagram(view)
     deleteSubtree(view)
     expect(blockText(view)).toBe('```tree\n- b\n```')
     paste(view, 'child')
@@ -188,21 +188,21 @@ describe('building the tree', () => {
 
   it('undoes one operation at a time with the note history', () => {
     view = setup('```tree\n- a\n```')
-    enterTree(view)
+    enterDiagram(view)
     addSibling(view, 'below')
     commitEdit(view, 'b', 'done')
     addSibling(view, 'below')
     commitEdit(view, 'c', 'done')
     expect(blockText(view)).toBe('```tree\n- a\n- b\n- c\n```')
-    undoInTree(view)
+    undoInDiagram(view)
     expect(blockText(view)).toBe('```tree\n- a\n- b\n-\n```')
-    undoInTree(view)
+    undoInDiagram(view)
     expect(blockText(view)).toBe('```tree\n- a\n- b\n```')
   })
 
   it('folds without changing the text and hides children from navigation', () => {
     view = setup('```tree\n- a\n  - b\n    - c\n```')
-    enterTree(view)
+    enterDiagram(view)
     moveSelection(view, 'child')
     toggleFold(view)
     selectLastLeaf(view)
@@ -256,27 +256,27 @@ describe('search hits inside a block', () => {
     expect(hitPathAtCursor(view.state)).toBeNull()
   })
 
-  it('selects the hit node in TREE (NORMAL)', () => {
+  it('selects the hit node in DIAGRAM (NORMAL)', () => {
     view = setup('```tree\n- a\n  - b\n- c\n```')
     cursorAt('b\n')
-    expect(isTreeActive(view.state)).toBe(true)
+    expect(isDiagramActive(view.state)).toBe(true)
     expect(selected(view)).toEqual([0, 0])
     expect(view.state.field(treeUiField).active?.editing).toBeNull()
   })
 
   it('selects the folded ancestor of a hidden hit', () => {
     view = setup('```tree\n- a\n  - b\n```')
-    enterTree(view)
+    enterDiagram(view)
     toggleFold(view)
-    exitTree(view)
+    exitDiagram(view)
     cursorAt('b\n```')
     expect(selected(view)).toEqual([0])
   })
 
-  it('stays out of TREE mode for a block with stray lines and only points at the node', () => {
+  it('stays out of DIAGRAM mode for a block with stray lines and only points at the node', () => {
     view = setup('```tree\nintro\n- a\n```')
     cursorAt('a\n```')
-    expect(isTreeActive(view.state)).toBe(false)
+    expect(isDiagramActive(view.state)).toBe(false)
     expect(hitPathAtCursor(view.state)).toEqual([0])
   })
 
@@ -293,14 +293,14 @@ describe('search hits inside a block', () => {
     view.dispatch({ selection: { anchor: 2 } })
     Vim.handleKey(cm, '*', 'user')
     expect(selected(view)).toEqual([0])
-    searchInTree(view, 'next')
+    searchInDiagram(view, 'next')
     expect(selected(view)).toEqual([2])
-    searchInTree(view, 'next')
-    expect(isTreeActive(view.state)).toBe(false)
+    searchInDiagram(view, 'next')
+    expect(isDiagramActive(view.state)).toBe(false)
     expect(view.state.selection.main.head).toBe(2)
     Vim.handleKey(cm, 'N', 'user')
     expect(selected(view)).toEqual([2])
-    searchInTree(view, 'prev')
+    searchInDiagram(view, 'prev')
     expect(selected(view)).toEqual([0])
   })
 

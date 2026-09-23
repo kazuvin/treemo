@@ -63,8 +63,8 @@ export function getScopes(): KeyScope[] {
   if (mode.focus !== 'editor' || !view || mode.nodeEditing) {
     return scopes
   }
-  if (mode.tree) {
-    return [...scopes, 'tree']
+  if (mode.diagram) {
+    return [...scopes, 'diagram']
   }
   if (mode.vim === 'VISUAL' || isVimPending(view)) {
     return scopes
@@ -84,7 +84,7 @@ export function swallowKey(token: string): boolean {
     return false
   }
   const scopes = getScopes()
-  if (scopes.includes('tree')) {
+  if (scopes.includes('diagram')) {
     return true
   }
   if (scopes.includes('block')) {

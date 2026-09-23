@@ -6,9 +6,9 @@ import {
   type KeyOverrides,
   parseKeyOverrides,
 } from '@/features/commands/utils/key-overrides'
+import { diagramCommands } from '@/features/diagram/commands'
+import { useDiagramStore } from '@/features/diagram/stores/diagram-store'
 import { editorCommands } from '@/features/editor/commands'
-import { treeCommands } from '@/features/tree/commands'
-import { useTreeStore } from '@/features/tree/stores/tree-store'
 import { vaultDefaultDir, vaultFrontMatters } from '@/features/vault/api/vault'
 import { useVaultStore } from '@/features/vault/stores/vault-store'
 import { displayName, parentDir, toNotePath, visibleRows } from '@/features/vault/utils/file-tree'
@@ -499,20 +499,20 @@ const appCommands: Command[] = [
     run: focusSidebar,
   },
   {
-    id: 'tree.toggleKeyGuide',
-    title: 'TREE モードの次のキーの案内を切り替える',
+    id: 'diagram.toggleKeyGuide',
+    title: 'DIAGRAM モードの次のキーの案内を切り替える',
     run: () => {
-      const tree = useTreeStore.getState()
-      tree.setShowKeyGuide(!tree.showKeyGuide)
+      const diagram = useDiagramStore.getState()
+      diagram.setShowKeyGuide(!diagram.showKeyGuide)
     },
   },
   {
-    id: 'tree.hint',
+    id: 'diagram.hint',
     title: 'ヒント（ノードへ飛ぶ）',
-    keys: [{ scope: 'tree', sequence: 'f' }],
-    when: () => useModeStore.getState().tree,
+    keys: [{ scope: 'diagram', sequence: 'f' }],
+    when: () => useModeStore.getState().diagram,
     run: () =>
-      useCommandStore.getState().setHintTarget('[data-tree-active="true"] [data-tree-node]'),
+      useCommandStore.getState().setHintTarget('[data-diagram-active="true"] [data-tree-node]'),
   },
   sidebarCommand('sidebar.down', '次の項目へ', ['j'], () => useVaultStore.getState().moveCursor(1)),
   sidebarCommand('sidebar.up', '前の項目へ', ['k'], () => useVaultStore.getState().moveCursor(-1)),
@@ -557,7 +557,7 @@ export const defaultCommands: readonly Command[] = [
   ...fontFamilyCommands,
   ...bgmCommands,
   ...editorCommands,
-  ...treeCommands,
+  ...diagramCommands,
 ]
 
 let keyOverrides: KeyOverrides = {}

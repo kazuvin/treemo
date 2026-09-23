@@ -17,10 +17,10 @@ pnpm rust:check      # cargo fmt --check / clippy / test
 
 このアプリで壊れると困るのは「ユーザーのメモ」なので、テキストを変える処理を厚くする。
 
-- **ツリーブロックの解析と書き戻し**（`features/tree/utils/`）。
+- **ツリーブロックの解析と書き戻し**（`features/diagram/utils/`）。
   [ツリーブロック](tree-block.md) の「往復の保証」を、記法の例ごとにテストする。
   読めない行、複数行のノード、複数のルート、深い字下げの飛び、`*` `+` の記号も入れる。
-- **TREE モードの操作**。操作前のテキスト → 操作 → 操作後のテキスト、の組で書く。
+- **DIAGRAM モードの操作**。操作前のテキスト → 操作 → 操作後のテキスト、の組で書く。
   ブロックの外が 1 バイトも変わらないことも確かめる。
 - **レイアウト**。ノードが重ならないこと、親が子の塊の中央に来ること。
 - **保管庫**（Rust）。一時フォルダを作り、保管庫の外に出るパスを拒むこと、`base_hash` が
@@ -32,8 +32,8 @@ CodeMirror の拡張は `EditorState` だけで確かめられるものが多い
 発行して `doc` と `StateField` を見る）。まずはその形で書き、DOM の計測が要るもの
 （ウィジェットの描画、ノードの大きさの実測）だけを別に考える。
 
-TREE モードの操作は `EditorView` を受け取るので、happy-dom の上に `EditorView` を作って
-確かめている（`features/tree/extensions/tree-actions.test.ts`）。ウィジェットの React も
+DIAGRAM モードの操作は `EditorView` を受け取るので、happy-dom の上に `EditorView` を作って
+確かめている（`features/diagram/extensions/tree-actions.test.ts`）。ウィジェットの React も
 描かれるが、大きさは測れないので、テキストと `StateField` だけを見る。
 
 happy-dom では要素の大きさを測れない。描画まで確かめたくなったら、Vitest の

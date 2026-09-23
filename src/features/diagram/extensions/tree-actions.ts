@@ -1,5 +1,5 @@
 /**
- * TREE モードの操作を、ブロックを正規形で書き直す 1 回のトランザクションとして発行する
+ * DIAGRAM モードの操作を、ブロックを正規形で書き直す 1 回のトランザクションとして発行する
  * （docs/architecture.md の「1 本の文書、1 本の履歴」）。
  */
 import { isolateHistory, redo, undo } from '@codemirror/commands'
@@ -7,7 +7,7 @@ import type { EditorState, TransactionSpec } from '@codemirror/state'
 import type { EditorView } from '@codemirror/view'
 import { getCM, Vim } from '@replit/codemirror-vim'
 import { useStatusStore } from '@/stores/status-store'
-import { useTreeStore } from '../stores/tree-store'
+import { useDiagramStore } from '../stores/diagram-store'
 import type { TreeNode } from '../types/tree'
 import {
   appendChild,
@@ -77,7 +77,7 @@ function commitTree(
       folds: new Map(ui.folds).set(block.from, folds),
     })),
     annotations: changed ? isolateHistory.of('full') : undefined,
-    userEvent: changed ? 'tree.edit' : 'tree.select',
+    userEvent: changed ? 'diagram.edit' : 'diagram.select',
   })
 }
 
@@ -98,7 +98,7 @@ function withTree(
   return true
 }
 
-export function isTreeActive(state: EditorState): boolean {
+export function isDiagramActive(state: EditorState): boolean {
   return state.field(treeUiField).active !== null
 }
 
@@ -106,7 +106,7 @@ export function isOnTreeBlock(state: EditorState): boolean {
   return blockAtCursor(state) !== null
 }
 
-export function enterTree(view: EditorView, from?: number, path?: number[]): boolean {
+export function enterDiagram(view: EditorView, from?: number, path?: number[]): boolean {
   const blocks = view.state.field(blocksField)
   const block = from === undefined ? blockAtCursor(view.state) : blocks.find((b) => b.from === from)
   if (!block) {
@@ -115,7 +115,7 @@ export function enterTree(view: EditorView, from?: number, path?: number[]): boo
   if (block.block.strayLines.length > 0) {
     useStatusStore
       .getState()
-      .show('読めない行があるので TREE モードに入れません。gs でソースを直してください')
+      .show('読めない行があるので DIAGRAM モードに入れません。gs でソースを直してください')
     view.dispatch({ selection: { anchor: block.from } })
     return false
   }
@@ -125,7 +125,7 @@ export function enterTree(view: EditorView, from?: number, path?: number[]): boo
   return true
 }
 
-/** ブロックの TREE モードに入る変更。path が無ければ最初のルートを選ぶ */
+/** ブロックの DIAGRAM モードに入る変更。path が無ければ最初のルートを選ぶ */
 export function enterTreeSpec(
   state: EditorState,
   block: ParsedBlock,
@@ -134,7 +134,9 @@ export function enterTreeSpec(
   const ui = state.field(treeUiField)
   const roots = rootsOf(block, ui)
   const fullscreen =
-    ui.active?.from === block.from ? ui.active.fullscreen : useTreeStore.getState().preferFullscreen
+    ui.active?.from === block.from
+      ? ui.active.fullscreen
+      : useDiagramStore.getState().preferFullscreen
   return {
     selection: { anchor: block.from },
     effects: updateTreeUi.of((u) => ({
@@ -152,10 +154,10 @@ export function enterTreeSpec(
 }
 
 /**
- * TREE モードの n / N（docs/tree-block.md の「検索」）。選んでいるノードの後ろ（前）に
- * カーソルを置いて、本文の Vim の検索を続ける。当たった先がノードなら、そこで TREE モードに入り直す
+ * DIAGRAM モードの n / N（docs/tree-block.md の「検索」）。選んでいるノードの後ろ（前）に
+ * カーソルを置いて、本文の Vim の検索を続ける。当たった先がノードなら、そこで DIAGRAM モードに入り直す
  */
-export function searchInTree(view: EditorView, direction: 'next' | 'prev'): void {
+export function searchInDiagram(view: EditorView, direction: 'next' | 'prev'): void {
   const cur = current(view.state)
   const cm = getCM(view)
   const path = cur?.active.path
@@ -177,12 +179,12 @@ export function searchInTree(view: EditorView, direction: 'next' | 'prev'): void
   })
   Vim.handleKey(cm, direction === 'next' ? 'n' : 'N', 'user')
   // 検索語が無いなどで動かなかったら、元のノードに戻る
-  if (!isTreeActive(view.state) && view.state.selection.main.head === anchor) {
-    enterTree(view, cur.block.from, path)
+  if (!isDiagramActive(view.state) && view.state.selection.main.head === anchor) {
+    enterDiagram(view, cur.block.from, path)
   }
 }
 
-export function exitTree(view: EditorView): void {
+export function exitDiagram(view: EditorView): void {
   const block = activeBlock(view.state)
   const doc = view.state.doc
   const after = block ? Math.min(block.to + 1, doc.length) : view.state.selection.main.head
@@ -209,7 +211,7 @@ export function selectNode(view: EditorView, from: number, path: number[]): void
     view.focus()
     return
   }
-  enterTree(view, from, path)
+  enterDiagram(view, from, path)
 }
 
 export function toggleSource(view: EditorView): boolean {
@@ -279,7 +281,7 @@ export function insertEmptyBlock(view: EditorView): void {
         from,
         path: [0],
         editing: { path: [0], cursor: 'end', isNew: true },
-        fullscreen: useTreeStore.getState().preferFullscreen,
+        fullscreen: useDiagramStore.getState().preferFullscreen,
         lastChild: {},
       },
     })),
@@ -503,15 +505,15 @@ export function toggleFullscreen(view: EditorView): void {
     return
   }
   const fullscreen = !cur.active.fullscreen
-  useTreeStore.getState().setPreferFullscreen(fullscreen)
+  useDiagramStore.getState().setPreferFullscreen(fullscreen)
   view.dispatch({ effects: patchActive({ fullscreen }) })
 }
 
-export function undoInTree(view: EditorView): void {
+export function undoInDiagram(view: EditorView): void {
   undo(view)
 }
 
-export function redoInTree(view: EditorView): void {
+export function redoInDiagram(view: EditorView): void {
   redo(view)
 }
 
@@ -523,7 +525,7 @@ export function centerSelection(view: EditorView): void {
   }
   const id = cur.active.path.join('.')
   const el = view.dom.ownerDocument.querySelector(
-    `[data-tree-active="true"] [data-node-id="${CSS.escape(id)}"]`,
+    `[data-diagram-active="true"] [data-node-id="${CSS.escape(id)}"]`,
   )
   el?.scrollIntoView({ block: 'center', inline: 'center' })
 }

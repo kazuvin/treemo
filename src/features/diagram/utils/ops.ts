@@ -1,5 +1,5 @@
 /**
- * TREE モードの操作（docs/tree-block.md の「TREE モードの操作とテキストの変化」）。
+ * DIAGRAM モードの操作（docs/tree-block.md の「DIAGRAM モードの操作とテキストの変化」）。
  * どれも元のツリーを変えずに新しいツリーを返す。
  */
 import type { NodePath, TreeNode } from '../types/tree'

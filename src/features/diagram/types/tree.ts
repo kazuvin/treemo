@@ -24,7 +24,7 @@ export interface TreeBlock {
   /** 終了フェンスの行。元のまま書き戻す */
   closing: string
   roots: TreeNode[]
-  /** 読めない行。1 つでもあれば TREE モードに入れない */
+  /** 読めない行。1 つでもあれば DIAGRAM モードに入れない */
   strayLines: StrayLine[]
 }
 

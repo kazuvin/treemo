@@ -21,7 +21,7 @@ const FOCUS_LABELS = { sidebar: 'サイドバー', editor: 'エディタ', overl
  */
 export function StatusBar({ ambience }: { ambience: string | null }) {
   const vim = useModeStore((s) => s.vim)
-  const tree = useModeStore((s) => s.tree)
+  const diagram = useModeStore((s) => s.diagram)
   const nodeEditing = useModeStore((s) => s.nodeEditing)
   const focus = useModeStore((s) => s.focus)
   const pending = useCommandStore((s) => s.pending)
@@ -32,10 +32,10 @@ export function StatusBar({ ambience }: { ambience: string | null }) {
   return (
     <footer className="flex h-7 items-center gap-4 border-t border-border bg-(--backdrop-paper) px-4 text-xs text-subtle-foreground">
       <span
-        className={tree ? 'font-bold text-foreground' : 'font-semibold text-foreground'}
+        className={diagram ? 'font-bold text-foreground' : 'font-semibold text-foreground'}
         aria-live="polite"
       >
-        {modeLabel({ vim, tree, nodeEditing })}
+        {modeLabel({ vim, diagram, nodeEditing })}
       </span>
       {FOCUS_LABELS[focus] && <span>{FOCUS_LABELS[focus]}</span>}
       {pending.length > 0 && (

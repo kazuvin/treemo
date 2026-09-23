@@ -21,10 +21,10 @@ const NORMAL: KeyHint[] = [
   { keys: ['Esc'], label: '出る' },
 ]
 
-const MINIMAL: KeyHint[] = [{ keys: ['Esc'], label: 'TREE を出る' }]
+const MINIMAL: KeyHint[] = [{ keys: ['Esc'], label: 'DIAGRAM を出る' }]
 
 /**
- * TREE モードで次に押せる主なキー（F-UX-5）。ノードの近くに出すと隣のノードと重なるので、
+ * DIAGRAM モードで次に押せる主なキー（F-UX-5）。ノードの近くに出すと隣のノードと重なるので、
  * 操作中のブロックの下端に 1 行で出す。設定で消すと最小限だけにする。
  */
 export function KeyGuide({ editing, show }: { editing: Editing | null; show: boolean }) {

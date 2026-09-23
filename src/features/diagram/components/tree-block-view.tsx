@@ -11,16 +11,16 @@ import { TreeCanvas } from './tree-canvas'
  * ブロックの 4 つの状態（F-TREE-2）のうち、絵で見せる 3 つ。
  * ソース表示はウィジェットを外して生のテキストを見せるので、ここには来ない。
  */
-export type BlockStatus = 'idle' | 'selected' | 'tree' | 'fullscreen'
+export type BlockStatus = 'idle' | 'selected' | 'diagram' | 'fullscreen'
 
 const SELECTED_HINTS: KeyHint[] = [
-  { keys: ['Enter'], label: 'TREE モード' },
+  { keys: ['Enter'], label: 'DIAGRAM モード' },
   { keys: ['gs'], label: 'ソース' },
   { keys: ['j', 'k'], label: '前後の行へ' },
 ]
 
 const EMPTY_HINTS: KeyHint[] = [
-  { keys: ['Enter'], label: 'TREE モードに入る' },
+  { keys: ['Enter'], label: 'DIAGRAM モードに入る' },
   { keys: ['o'], label: 'ノードを足す' },
 ]
 
@@ -58,12 +58,12 @@ export function TreeBlockView({
   return (
     <div
       role="presentation"
-      data-tree-active={status === 'tree'}
+      data-diagram-active={status === 'diagram'}
       className={cn(
         'my-2 rounded-card border px-4 py-3',
         status === 'idle' && 'border-border-hairline',
         status === 'selected' && 'border-border-strong',
-        status === 'tree' && 'border-selected-border',
+        status === 'diagram' && 'border-selected-border',
         status === 'fullscreen' && 'border-border-hairline',
       )}
       onMouseDown={(event) => {
@@ -81,10 +81,10 @@ export function TreeBlockView({
             {roots.length > 0 ? (
               <TreeCanvas
                 roots={roots}
-                selectedId={status === 'tree' ? selectedId : null}
+                selectedId={status === 'diagram' ? selectedId : null}
                 hitId={status === 'selected' ? hitId : null}
                 search={search}
-                editing={status === 'tree' ? editing : null}
+                editing={status === 'diagram' ? editing : null}
                 showGuide={showGuide}
                 onSelectNode={onSelectNode}
                 onEditNode={onEditNode}
@@ -99,7 +99,7 @@ export function TreeBlockView({
             <div className="mt-2 border-t border-border-hairline pt-2 text-2xs text-subtle-foreground">
               <p>
                 読めない行が {strayLines.length} 行あります。<Code>gs</Code>
-                でソースを表示して直してください。直すまで TREE モードには入れません。
+                でソースを表示して直してください。直すまで DIAGRAM モードには入れません。
               </p>
               <ul className="mt-1 text-muted-foreground">
                 {strayLines.slice(0, 3).map((stray) => (
@@ -111,7 +111,7 @@ export function TreeBlockView({
             </div>
           )}
           {status === 'selected' && <KeyHints className="mt-2" hints={SELECTED_HINTS} />}
-          {status === 'tree' && (
+          {status === 'diagram' && (
             <div className="mt-2">
               <KeyGuide editing={editing} show={showGuide} />
             </div>

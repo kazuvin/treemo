@@ -28,7 +28,7 @@ src/
 │   ├── ui/              UI の部品（Kotoba）。props だけで動く最下層
 │   └── layouts/         画面の外枠（サイドバー、ステータスバー、grid）
 ├── features/
-│   └── <domain>/        vault / editor / tree / commands
+│   └── <domain>/        vault / editor / diagram / commands
 │       ├── api/         Rust コマンドを呼ぶ薄い関数（vault だけが持つ想定）
 │       ├── components/
 │       ├── extensions/  CodeMirror の拡張

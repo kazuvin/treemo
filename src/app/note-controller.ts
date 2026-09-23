@@ -1,9 +1,9 @@
 import { Annotation, Transaction } from '@codemirror/state'
 import { EditorView } from '@codemirror/view'
+import { restoreTreeFolds, treeFolds } from '@/features/diagram/extensions/tree-actions'
 import type { EditorHandle } from '@/features/editor/components/editor'
 import { foldedLines, restoreFolds } from '@/features/editor/utils/folds'
 import { minimalChange } from '@/features/editor/utils/minimal-change'
-import { restoreTreeFolds, treeFolds } from '@/features/tree/extensions/tree-actions'
 import {
   noteCreate,
   noteRead,

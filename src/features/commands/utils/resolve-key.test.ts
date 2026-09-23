@@ -1,7 +1,7 @@
 import type { Command } from '@/lib/command'
 import { candidatesFor, nextKeys, resolveKey } from './resolve-key'
 
-function command(id: string, scope: 'global' | 'normal' | 'tree', sequence: string): Command {
+function command(id: string, scope: 'global' | 'normal' | 'diagram', sequence: string): Command {
   return { id, title: id, keys: [{ scope, sequence }], run: vi.fn() }
 }
 
@@ -10,9 +10,9 @@ const commands = [
   command('switcher', 'normal', '<Space>ff'),
   command('newNote', 'normal', '<Space>fn'),
   command('toggleTask', 'normal', '<Space>x'),
-  command('fold', 'tree', 'za'),
-  command('center', 'tree', 'zz'),
-  command('delete', 'tree', 'dd'),
+  command('fold', 'diagram', 'za'),
+  command('center', 'diagram', 'zz'),
+  command('delete', 'diagram', 'dd'),
 ]
 const ctx = { view: null }
 
@@ -48,7 +48,7 @@ describe('resolveKey', () => {
   })
 
   it('returns none when the sequence diverges', () => {
-    const candidates = candidatesFor(commands, ['tree'], ctx)
+    const candidates = candidatesFor(commands, ['diagram'], ctx)
     expect(resolveKey(candidates, ['d', 'x'])).toEqual({ kind: 'none' })
   })
 })
