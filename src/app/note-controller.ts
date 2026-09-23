@@ -145,7 +145,9 @@ class NoteController {
       useStatusStore.getState().clear()
       void this.refreshNow()
     }
-    handle.view.focus()
+    // 何も開いていなかった間はエディタの枠が invisible で、ここではまだ描き直されていない。
+    // そのまま focus() しても効かないので、描き直したあとに当てる
+    requestAnimationFrame(() => handle.view.focus())
   }
 
   private replaceText(text: string): void {
