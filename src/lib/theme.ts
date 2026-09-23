@@ -2,6 +2,11 @@
  * テーマ。色のトークンの値をプリセットごとに持ち、ユーザーの上書きを重ねて `<html>` に書く。
  * 考え方と足し方は docs/kotoba-design-system.md の「テーマ」。
  */
+import kawa from '@/assets/backdrops/kawa.jpg'
+import mori from '@/assets/backdrops/mori.jpg'
+import umi from '@/assets/backdrops/umi.jpg'
+import yama from '@/assets/backdrops/yama.jpg'
+import yoru from '@/assets/backdrops/yoru.jpg'
 
 /** パレット。意味のトークンが指す段で、プリセットの違いはここだけ */
 export const PALETTE_TOKENS = [
@@ -112,11 +117,26 @@ function preset(ramp: Ramp): TokenMap {
   return { ...ramp, ...SEMANTIC }
 }
 
+/**
+ * ウィンドウの後ろに敷く写真。blur の px でぼかし、その上に background の色を veil の濃さで
+ * 重ねる。本文はその上に直に置き、サイドバーとステータスバーにだけ paper の濃さで重ねて区切る
+ */
+export interface Backdrop {
+  image: string
+  blur: number
+  veil: number
+  paper: number
+}
+
+const LIGHT_BACKDROP = { blur: 28, veil: 0.55, paper: 0.45 }
+const DARK_BACKDROP = { blur: 28, veil: 0.5, paper: 0.45 }
+
 export const THEMES = [
   {
     id: 'kotoba',
     label: 'Kotoba',
     colorScheme: 'light',
+    backdrop: null,
     // globals.css の @theme と同じ値（theme.test.ts で確かめる）
     tokens: preset({
       'gray-0': '#ffffff',
@@ -140,6 +160,7 @@ export const THEMES = [
     id: 'kotoba-dark',
     label: 'Kotoba Dark',
     colorScheme: 'dark',
+    backdrop: null,
     tokens: preset({
       'gray-0': '#16161a',
       'gray-25': '#1b1b20',
@@ -162,6 +183,7 @@ export const THEMES = [
     id: 'washi',
     label: 'Washi',
     colorScheme: 'light',
+    backdrop: null,
     tokens: preset({
       'gray-0': '#fdfbf7',
       'gray-25': '#f9f6f0',
@@ -180,10 +202,126 @@ export const THEMES = [
       'accent-tint': '#e9eff8',
     }),
   },
+  {
+    id: 'yama',
+    label: '山',
+    colorScheme: 'light',
+    backdrop: { image: yama, ...LIGHT_BACKDROP },
+    tokens: preset({
+      'gray-0': '#fbfbfd',
+      'gray-25': '#f6f7fa',
+      'gray-50': '#eff1f5',
+      'gray-100': '#e5e8ee',
+      'gray-200': '#d6dae3',
+      'gray-300': '#bcc2cf',
+      'gray-400': '#939aab',
+      'gray-500': '#6d7486',
+      'gray-600': '#515768',
+      'gray-800': '#2a2e3a',
+      'gray-900': '#161922',
+      accent: '#c8553d',
+      'accent-600': '#a94631',
+      'accent-700': '#843626',
+      'accent-tint': '#f9ebe7',
+    }),
+  },
+  {
+    id: 'kawa',
+    label: '川',
+    colorScheme: 'light',
+    backdrop: { image: kawa, ...LIGHT_BACKDROP },
+    tokens: preset({
+      'gray-0': '#fbfcfa',
+      'gray-25': '#f5f8f4',
+      'gray-50': '#eef3ec',
+      'gray-100': '#e3eae0',
+      'gray-200': '#d2dccd',
+      'gray-300': '#b6c4b0',
+      'gray-400': '#8d9d88',
+      'gray-500': '#687764',
+      'gray-600': '#4d5a4a',
+      'gray-800': '#283026',
+      'gray-900': '#151a14',
+      accent: '#2a8190',
+      'accent-600': '#226b77',
+      'accent-700': '#1a535c',
+      'accent-tint': '#e6f2f3',
+    }),
+  },
+  {
+    id: 'umi',
+    label: '海',
+    colorScheme: 'light',
+    backdrop: { image: umi, ...LIGHT_BACKDROP },
+    tokens: preset({
+      'gray-0': '#fbfcfe',
+      'gray-25': '#f5f8fb',
+      'gray-50': '#edf2f7',
+      'gray-100': '#e1e8f0',
+      'gray-200': '#cfd9e4',
+      'gray-300': '#b1bfcf',
+      'gray-400': '#8898ab',
+      'gray-500': '#637386',
+      'gray-600': '#485668',
+      'gray-800': '#232d3a',
+      'gray-900': '#121821',
+      accent: '#1f6fb2',
+      'accent-600': '#1a5d95',
+      'accent-700': '#144874',
+      'accent-tint': '#e7f0f8',
+    }),
+  },
+  {
+    id: 'mori',
+    label: '森',
+    colorScheme: 'light',
+    backdrop: { image: mori, ...LIGHT_BACKDROP },
+    tokens: preset({
+      'gray-0': '#fafaf6',
+      'gray-25': '#f5f5ef',
+      'gray-50': '#edeee6',
+      'gray-100': '#e2e4d9',
+      'gray-200': '#d0d4c5',
+      'gray-300': '#b2b8a5',
+      'gray-400': '#8a917d',
+      'gray-500': '#666d5a',
+      'gray-600': '#4c5242',
+      'gray-800': '#282b21',
+      'gray-900': '#161811',
+      accent: '#b5652b',
+      'accent-600': '#985424',
+      'accent-700': '#76411c',
+      'accent-tint': '#f7ede4',
+    }),
+  },
+  {
+    id: 'yoru',
+    label: '夜',
+    colorScheme: 'dark',
+    backdrop: { image: yoru, ...DARK_BACKDROP },
+    tokens: preset({
+      'gray-0': '#121829',
+      'gray-25': '#161d30',
+      'gray-50': '#1b2338',
+      'gray-100': '#232c43',
+      'gray-200': '#2f3952',
+      'gray-300': '#414c67',
+      'gray-400': '#5f6a86',
+      'gray-500': '#8490ab',
+      'gray-600': '#a9b3ca',
+      'gray-800': '#d9deea',
+      'gray-900': '#eef1f7',
+      accent: '#e3b55b',
+      'accent-600': '#eac47c',
+      'accent-700': '#f0d49e',
+      'accent-tint': '#3a3322',
+    }),
+  },
 ] as const satisfies readonly {
   id: string
   label: string
   colorScheme: 'light' | 'dark'
+  backdrop: Backdrop | null
   tokens: TokenMap
 }[]
 
@@ -210,6 +348,8 @@ export interface ResolvedTheme {
   label: string
   colorScheme: 'light' | 'dark'
   tokens: TokenMap
+  /** 背景の画像。カスタムは元のプリセットのものを使う */
+  backdrop: Backdrop | null
   /** 元にした組み込みのプリセット。組み込みならそれ自身 */
   base: (typeof THEMES)[number]
   custom: CustomTheme | null
@@ -239,6 +379,7 @@ export function resolveTheme(id: ThemeId, customs: readonly CustomTheme[]): Reso
       label: custom.label,
       colorScheme: base.colorScheme,
       tokens: { ...base.tokens, ...custom.tokens },
+      backdrop: base.backdrop,
       base,
       custom,
     }
@@ -349,6 +490,13 @@ export function sanitizeCustomThemes(raw: readonly unknown[]): CustomTheme[] {
   return result
 }
 
+/** `#rgb` / `#rrggbb` / `#rrggbbaa` に濃さを掛けて rgba() にする */
+export function withAlpha(hex: string, alpha: number): string {
+  const digits = hex.length === 4 ? hex.slice(1).replaceAll(/./g, (c) => c + c) : hex.slice(1)
+  const [r, g, b, a = 255] = (digits.match(/../g) ?? []).map((pair) => Number.parseInt(pair, 16))
+  return `rgba(${r}, ${g}, ${b}, ${Number(((a / 255) * alpha).toFixed(3))})`
+}
+
 function cssValue(value: TokenValue): string {
   return HEX.test(value) ? value : `var(--color-${value})`
 }
@@ -362,4 +510,16 @@ export function applyTheme(
   for (const name of COLOR_TOKENS) {
     root.style.setProperty(`--color-${name}`, cssValue(theme.tokens[name]))
   }
+  const background = resolveToken(theme.tokens, 'background') ?? '#ffffff'
+  const { backdrop } = theme
+  root.style.setProperty('--backdrop-image', backdrop ? `url("${backdrop.image}")` : 'none')
+  root.style.setProperty('--backdrop-blur', `${backdrop?.blur ?? 0}px`)
+  root.style.setProperty(
+    '--backdrop-veil',
+    backdrop ? withAlpha(background, backdrop.veil) : 'transparent',
+  )
+  root.style.setProperty(
+    '--backdrop-paper',
+    backdrop ? withAlpha(background, backdrop.paper) : 'transparent',
+  )
 }

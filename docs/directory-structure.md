@@ -23,6 +23,7 @@ treemo/
 src/
 ├── main.tsx             エントリ。フォントと globals.css を読み、App を描く
 ├── app/                 合成層。features をつなぎ、画面の骨格を作る
+├── assets/              画像などの静的ファイル（テーマの背景の写真は backdrops/）
 ├── components/
 │   ├── ui/              UI の部品（Kotoba）。props だけで動く最下層
 │   └── layouts/         画面の外枠（サイドバー、ステータスバー、grid）
@@ -47,7 +48,7 @@ src/
 
 | 層 | ディレクトリ | import してよいもの |
 | --- | --- | --- |
-| 共有層 | `components/ui` `lib` `hooks` `stores` `config` | 共有層だけ |
+| 共有層 | `components/ui` `lib` `hooks` `stores` `config` `assets` | 共有層だけ |
 | features | `features/<domain>` | 共有層と、自分の feature の中 |
 | layouts | `components/layouts` | 共有層と features |
 | app | `app` | すべて |

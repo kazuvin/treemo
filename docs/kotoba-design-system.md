@@ -367,7 +367,8 @@ kazuvin.me（Next.js）に取り込んだものを、トークン層と文書ご
 ## テーマ
 
 色のトークン（`--color-*`）はテーマで差し替えられる。組み込みのプリセットは Kotoba（既定）、
-Kotoba Dark、Washi の 3 つで、ユーザーはそれを元にしたカスタムのプリセットを作れる。
+Kotoba Dark、Washi と、背景画像を敷く山・川・海・森・夜の 8 つで、ユーザーはそれを元にした
+カスタムのプリセットを作れる。
 
 - **変えるのは意味のトークン、選ぶのはパレットの段。** 設定画面は意味のトークン（面・文字・
   境界・選択など）を先に並べ、値はパレット（ランプ 11 段とアクセント 4 段）から選ぶのを
@@ -382,6 +383,26 @@ Kotoba Dark、Washi の 3 つで、ユーザーはそれを元にしたカスタ
 - **`globals.css` の `@theme` にも Kotoba の値を書く。** Tailwind がユーティリティを作るのと、
   起動して状態を読むまでの最初の描画に使う。Kotoba の値を変えたら両方を直す
   （`src/lib/theme.test.ts` が食い違いを見つける）。
+- **背景の写真はぼかしてウィンドウの後ろに敷き、本文はその上に直に置く。** 見た目は
+  Neovim の書き物向けプラグイン（zen-mode.nvim など）を、ぼかした壁紙と透過した端末で
+  使うときに寄せている。写真を持つプリセット（`Backdrop`）は、`applyTheme` が
+  `--backdrop-image`・`--backdrop-blur`・`--backdrop-veil`・`--backdrop-paper` を書く。
+  app が画面の一番後ろに写真を `blur` の px でぼかして置き（縁が透けないよう画面より
+  大きく敷く）、その上に background の色を `veil` の濃さで重ねる。エディタ自身は
+  背景を持たないので、本文は写真の上に直に乗る。サイドバーとステータスバーにだけ
+  `paper` の濃さで重ね、本文と区切る。写真を持たないプリセットでは 4 つとも空になり、
+  見た目は変わらない。
+- **写真は Unsplash から取った。** [Unsplash License](https://unsplash.com/license)
+  （商用も含めて無料で使え、クレジットも要らない）のもので、1600px・JPEG で
+  `src/assets/backdrops/` に置いている。ぼかして使うので、これより大きくしない。
+
+  | ファイル | 写真 | 撮影 |
+  | --- | --- | --- |
+  | `yama.jpg` | [朝霧に沈む青い連山](https://unsplash.com/photos/O8Y4TPR2tEk) | yangzhiyuan |
+  | `kawa.jpg` | [緑の谷を蛇行する川](https://unsplash.com/photos/S7M9k4d18UQ) | Dennis Zhang |
+  | `umi.jpg` | [曇り空の凪いだ海](https://unsplash.com/photos/W8d0JdvCVuI) | Anna Hunko |
+  | `mori.jpg` | [霧の針葉樹林](https://unsplash.com/photos/m8rM-X6S54o) | Micah & Sammie Chaffin |
+  | `yoru.jpg` | [星空と山影](https://unsplash.com/photos/UeRIcbTthwE) | Filip Kvasnak |
 - **カスタムは「元にした組み込みのプリセット + 変えたトークン」。** 組み込みのプリセットは
   変えられず、そこで色を変えると写したカスタムができる。color-scheme と、`r` で戻す先は
   元のプリセットから取る。
@@ -393,5 +414,6 @@ Kotoba Dark、Washi の 3 つで、ユーザーはそれを元にしたカスタ
 - **変えるのは設定画面の「テーマ」。** 組み込みのプリセットへの切り替えはコマンドにも
   なっている（`app.theme.<id>`、パレットの「テーマ: <名前>」）。キーは割り当てていない。
 
-プリセットを足すときは、`THEMES` に `{ id, label, colorScheme, tokens: preset({ … }) }` を
-足し、ランプ 11 段とアクセント 4 段の色を書く。
+プリセットを足すときは、`THEMES` に `{ id, label, colorScheme, backdrop, tokens: preset({ … }) }`
+を足し、ランプ 11 段とアクセント 4 段の色を書く。写真を敷くなら `backdrop` に写真と
+`LIGHT_BACKDROP` / `DARK_BACKDROP`（ぼかしと濃さ）を、敷かないなら `null` を書く。

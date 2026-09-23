@@ -11,6 +11,7 @@ import {
   resolveToken,
   sanitizeCustomThemes,
   THEMES,
+  withAlpha,
   wouldResolve,
 } from './theme'
 import css from '@/styles/globals.css?raw'
@@ -38,6 +39,39 @@ describe('applyTheme', () => {
     expect(root.style.getPropertyValue('--color-accent')).toBe('#00ff00')
     expect(root.style.getPropertyValue('--color-ring')).toBe('var(--color-gray-500)')
     expect(root.style.getPropertyValue('--color-gray-0')).toBe('#16161a')
+  })
+})
+
+describe('背景画像', () => {
+  it('画像のあるプリセットは、画像と background の色を重ねる変数を書く', () => {
+    const root = document.createElement('html')
+    applyTheme(resolveTheme('yama', []), root)
+    expect(root.style.getPropertyValue('--backdrop-image')).toMatch(/^url\(".+yama.+"\)$/)
+    expect(root.style.getPropertyValue('--backdrop-blur')).toBe('28px')
+    expect(root.style.getPropertyValue('--backdrop-veil')).toBe('rgba(251, 251, 253, 0.55)')
+  })
+
+  it('画像の無いプリセットは変数を空にする', () => {
+    const root = document.createElement('html')
+    applyTheme(resolveTheme('yama', []), root)
+    applyTheme(resolveTheme('kotoba', []), root)
+    expect(root.style.getPropertyValue('--backdrop-image')).toBe('none')
+    expect(root.style.getPropertyValue('--backdrop-blur')).toBe('0px')
+    expect(root.style.getPropertyValue('--backdrop-paper')).toBe('transparent')
+  })
+
+  it('カスタムは元のプリセットの画像を使う', () => {
+    expect(resolveTheme('custom-1', [{ ...custom, base: 'yoru' }]).backdrop).toBe(
+      resolveTheme('yoru', []).backdrop,
+    )
+  })
+
+  it.each([
+    ['#ffffff', 0.5, 'rgba(255, 255, 255, 0.5)'],
+    ['#abc', 1, 'rgba(170, 187, 204, 1)'],
+    ['#00000080', 0.5, 'rgba(0, 0, 0, 0.251)'],
+  ])('withAlpha(%s, %s) → %s', (hex, alpha, expected) => {
+    expect(withAlpha(hex, alpha)).toBe(expected)
   })
 })
 

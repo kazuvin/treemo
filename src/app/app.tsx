@@ -201,6 +201,12 @@ export function App() {
       className="grid h-dvh grid-rows-[1fr_auto] text-base"
       onFocus={(event) => trackFocus(event.target)}
     >
+      {/* テーマの背景画像（lib/theme.ts の Backdrop）。画像の無いテーマでは何も描かない */}
+      <div aria-hidden="true" className="pointer-events-none fixed inset-0 -z-10 overflow-hidden">
+        {/* ぼかすと縁が透けるので、画面より大きく敷いてはみ出た分を切る */}
+        <div className="absolute -inset-24 bg-(image:--backdrop-image) bg-cover bg-center blur-(--backdrop-blur)" />
+        <div className="absolute inset-0 bg-(--backdrop-veil)" />
+      </div>
       <div
         className="grid min-h-0"
         style={{ gridTemplateColumns: gridColumns(sidebarVisible, sidebarSide) }}
@@ -214,7 +220,7 @@ export function App() {
             aria-label="サイドバー"
             className={cn(
               // 領域のフォーカスはリングではなく上端の線で示す
-              'relative flex min-h-0 flex-col border-border outline-none',
+              'relative flex min-h-0 flex-col border-border bg-(--backdrop-paper) outline-none',
               sidebarSide === 'left' ? 'border-r' : 'order-last border-l',
             )}
           >

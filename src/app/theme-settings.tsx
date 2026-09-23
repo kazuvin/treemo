@@ -11,6 +11,7 @@ import {
   resolveToken,
   THEMES,
   TOKEN_GROUPS,
+  withAlpha,
   wouldResolve,
 } from '@/lib/theme'
 import { useThemeStore } from '@/stores/theme-store'
@@ -72,13 +73,26 @@ function ThemeTile({
       )}
     >
       <span
-        className="flex h-12 flex-col justify-between rounded-sm border px-2 py-1.5"
+        className="relative flex h-12 flex-col justify-between overflow-hidden rounded-sm border px-2 py-1.5"
         style={{ background: color('background'), borderColor: color('border') }}
       >
-        <span className="text-xs font-semibold" style={{ color: color('foreground') }}>
+        {theme.backdrop && (
+          // 画面と同じく、ぼかした写真に background の色を重ねる。小さいのでぼかしも小さくする
+          <>
+            <span
+              className="absolute -inset-2 bg-cover bg-center blur-[3px]"
+              style={{ backgroundImage: `url("${theme.backdrop.image}")` }}
+            />
+            <span
+              className="absolute inset-0"
+              style={{ background: withAlpha(color('background'), theme.backdrop.veil) }}
+            />
+          </>
+        )}
+        <span className="relative text-xs font-semibold" style={{ color: color('foreground') }}>
           Aa
         </span>
-        <span className="flex gap-1">
+        <span className="relative flex gap-1">
           <Swatch color={color('primary')} className="size-2.5" />
           <Swatch color={color('muted-foreground')} className="size-2.5" />
           <Swatch color={color('ring')} className="size-2.5" />

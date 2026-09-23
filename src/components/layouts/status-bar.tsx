@@ -27,7 +27,7 @@ export function StatusBar() {
   const openPath = useVaultStore((s) => s.openPath)
   const saveState = useVaultStore((s) => s.session.saveState)
   return (
-    <footer className="flex h-7 items-center gap-4 border-t border-border px-4 text-xs text-subtle-foreground">
+    <footer className="flex h-7 items-center gap-4 border-t border-border bg-(--backdrop-paper) px-4 text-xs text-subtle-foreground">
       <span
         className={tree ? 'font-bold text-foreground' : 'font-semibold text-foreground'}
         aria-live="polite"

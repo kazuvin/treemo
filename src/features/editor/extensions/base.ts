@@ -11,7 +11,8 @@ const theme = EditorView.theme({
     height: '100%',
     fontSize: 'var(--text-base)',
     color: 'var(--color-foreground)',
-    backgroundColor: 'var(--color-background)',
+    // 背景はウィンドウ（body とテーマの背景画像）に任せる
+    backgroundColor: 'transparent',
   },
   '&.cm-focused': { outline: 'none' },
   '.cm-scroller': {
