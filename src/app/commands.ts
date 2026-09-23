@@ -186,7 +186,7 @@ function atEdgeToward(direction: Direction, ctx: CommandContext): boolean {
   return direction === 'left' ? head === line.from : head >= Math.max(line.from, line.to - 1)
 }
 
-function openSettings(): void {
+export function openSettings(): void {
   const ui = useUiStore.getState()
   if (ui.settingsOpen) {
     ui.setSettingsOpen(false)
@@ -337,14 +337,33 @@ const appCommands: Command[] = [
   {
     id: 'app.focusSidebar',
     title: 'サイドバーへ移る',
-    keys: [{ scope: 'normal', sequence: '<Space>e' }],
+    keys: [{ scope: 'global', sequence: '⌘0' }],
     run: focusSidebar,
   },
   {
     id: 'app.focusEditor',
     title: 'エディタへ移る',
-    keys: [{ scope: 'sidebar', sequence: 'Esc' }],
+    keys: [
+      { scope: 'global', sequence: '⌘1' },
+      { scope: 'sidebar', sequence: 'Esc' },
+    ],
     run: focusEditor,
+  },
+  {
+    id: 'app.toggleFocus',
+    title: 'サイドバーとエディタを行き来する',
+    keys: [
+      { scope: 'normal', sequence: '<Space>e' },
+      { scope: 'normal', sequence: '<C-w>w' },
+      { scope: 'normal', sequence: '<C-w><C-w>' },
+    ],
+    run: () => {
+      if (useModeStore.getState().focus === 'sidebar') {
+        focusEditor()
+      } else {
+        focusSidebar()
+      }
+    },
   },
   {
     id: 'app.focusLeft',
