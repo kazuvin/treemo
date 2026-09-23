@@ -1,5 +1,6 @@
 import type { EditorView } from '@codemirror/view'
-import { commitEdit, editNode, selectNode } from '../extensions/tree-actions'
+import { KeyHints } from '@/components/ui/key-hints'
+import { addNodeAt, commitEdit, editNode, selectNode } from '../extensions/tree-actions'
 import { useTreeStore } from '../stores/tree-store'
 import { KeyGuide } from './key-guide'
 import { TreeCanvas } from './tree-canvas'
@@ -32,6 +33,8 @@ export function TreeFullscreen({ view }: { view: EditorView | null }) {
             roots={active.roots}
             selectedId={active.path?.join('.') ?? null}
             editing={active.editing}
+            showGuide={showGuide}
+            onAddNode={(path, where) => addNodeAt(view, active.from, path, where)}
             onSelectNode={(path) => selectNode(view, active.from, path)}
             onEditNode={(path) => {
               selectNode(view, active.from, path)
@@ -40,7 +43,7 @@ export function TreeFullscreen({ view }: { view: EditorView | null }) {
             onCommit={(text, next) => commitEdit(view, text, next)}
           />
         ) : (
-          <p className="text-sm text-muted-foreground">空のツリー · o でノードを足す</p>
+          <KeyHints hints={[{ keys: ['o'], label: 'ノードを足す' }]} />
         )}
       </div>
     </div>

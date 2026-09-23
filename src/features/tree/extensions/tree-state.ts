@@ -1,4 +1,5 @@
-import { type EditorState, StateEffect, StateField } from '@codemirror/state'
+import { type SearchQuery, setSearchQuery } from '@codemirror/search'
+import { Annotation, type EditorState, StateEffect, StateField } from '@codemirror/state'
 import type { TreeBlock, TreeNode } from '../types/tree'
 import { type BlockRange, findTreeBlocks } from '../utils/find-blocks'
 import { applyCollapsed, clampPath } from '../utils/ops'
@@ -64,6 +65,32 @@ function scanBlocks(state: EditorState): ParsedBlock[] {
 export const blocksField = StateField.define<ParsedBlock[]>({
   create: scanBlocks,
   update: (blocks, tr) => (tr.docChanged ? scanBlocks(tr.state) : blocks),
+})
+
+/** codemirror-vim は、検索を光らせている間だけ forVim を立てた問い合わせを流す（`:noh` で降ろす） */
+function toHighlight(query: SearchQuery & { forVim?: boolean }): RegExp | null {
+  if (!query.forVim || !query.valid || query.search === '') {
+    return null
+  }
+  try {
+    return new RegExp(query.search, query.caseSensitive ? 'g' : 'gi')
+  } catch {
+    return null
+  }
+}
+
+/** Vim が本文で光らせている検索。ツリーの絵の中でも同じ語を光らせる（docs/tree-block.md の「検索」） */
+export const searchHighlightField = StateField.define<RegExp | null>({
+  create: () => null,
+  update: (value, tr) => {
+    let next = value
+    for (const effect of tr.effects) {
+      if (effect.is(setSearchQuery)) {
+        next = toHighlight(effect.value)
+      }
+    }
+    return next
+  },
 })
 
 export const updateTreeUi = StateEffect.define<(ui: TreeUi) => TreeUi>()
@@ -142,6 +169,75 @@ export const treeUiField = StateField.define<TreeUi>({
     return ui
   },
 })
+
+/**
+ * カーソルがブロックの中の行（フェンスより内側）にあれば、その行を含む見えているノード。
+ * Vim の `/` はテキストを探してカーソルをここへ置くので、当たったノードとして見せる
+ * （docs/tree-block.md の「検索」）。折りたたんだ子孫に当たったら、閉じている祖先を返す
+ */
+export function hitPathAtCursor(state: EditorState): number[] | null {
+  const block = blockAtCursor(state)
+  const ui = state.field(treeUiField)
+  if (!block || ui.active?.from === block.from) {
+    return null
+  }
+  const doc = state.doc
+  const first = doc.lineAt(block.from).number
+  const line = doc.lineAt(state.selection.main.head).number - first
+  if (line <= 0 || line >= doc.lineAt(block.to).number - first) {
+    return null
+  }
+  return nodeAtLine(rootsOf(block, ui), line)?.id.split('.').map(Number) ?? null
+}
+
+/**
+ * ブロックの中で、見えているノードが占める行（0 が開始フェンス）の最初と最後。
+ * 閉じたノードは、隠れている子孫の行も含む
+ */
+export function nodeLineSpan(
+  state: EditorState,
+  block: ParsedBlock,
+  path: readonly number[],
+): [number, number] | null {
+  const visible: TreeNode[] = []
+  const walk = (nodes: readonly TreeNode[]) => {
+    for (const node of nodes) {
+      visible.push(node)
+      if (!node.collapsed) {
+        walk(node.children)
+      }
+    }
+  }
+  walk(rootsOf(block, state.field(treeUiField)))
+  const id = path.join('.')
+  const i = visible.findIndex((node) => node.id === id)
+  const line = visible[i]?.line
+  if (line === undefined) {
+    return null
+  }
+  const next = visible.slice(i + 1).find((node) => node.line !== undefined)?.line
+  const doc = state.doc
+  const closing = doc.lineAt(block.to).number - doc.lineAt(block.from).number
+  return [line, (next ?? closing) - 1]
+}
+
+/** カーソルをブロックの中の行に置いても、TREE モードに入らせない（TREE モードの n / N が使う） */
+export const keepCursorInBlock = Annotation.define<boolean>()
+
+/** 行はノードの並び（行きがけ順）と同じ順なので、その行より前で最後に始まるノードを探す */
+function nodeAtLine(nodes: readonly TreeNode[], line: number): TreeNode | null {
+  let hit: TreeNode | null = null
+  for (const node of nodes) {
+    if (node.line === undefined || node.line > line) {
+      break
+    }
+    hit = node
+  }
+  if (!hit || hit.collapsed) {
+    return hit
+  }
+  return nodeAtLine(hit.children, line) ?? hit
+}
 
 /** カーソルが乗っているブロック。ソース表示のブロックは含めない */
 export function blockAtCursor(state: EditorState): ParsedBlock | null {

@@ -2,7 +2,7 @@ import { defaultKeymap, history, historyKeymap } from '@codemirror/commands'
 import { markdown, markdownLanguage } from '@codemirror/lang-markdown'
 import { codeFolding, HighlightStyle, syntaxHighlighting } from '@codemirror/language'
 import type { Extension } from '@codemirror/state'
-import { EditorView, keymap } from '@codemirror/view'
+import { drawSelection, EditorView, keymap } from '@codemirror/view'
 import { tags } from '@lezer/highlight'
 
 /** Kotoba のトークン（globals.css）だけで組む。文字は 14px を超えない */
@@ -94,6 +94,8 @@ export function baseExtensions(): Extension[] {
     markdown({ base: markdownLanguage }),
     codeFolding({ placeholderText: '…' }),
     syntaxHighlighting(highlight),
+    // codemirror-vim は元の選択を透明にするので、VISUAL の選択はこのレイヤーで描く
+    drawSelection(),
     EditorView.lineWrapping,
     keymap.of([...defaultKeymap, ...historyKeymap]),
     scrollToEdges,

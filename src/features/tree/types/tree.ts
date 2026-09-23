@@ -6,6 +6,8 @@ export interface TreeNode {
   children: TreeNode[]
   /** 折りたたんでいるか。アプリだけが使い、ファイルには書かない */
   collapsed?: boolean
+  /** 読んだときの、ブロックの中の 1 行目の行番号（0 が開始フェンス）。操作で足したノードには無い */
+  line?: number
 }
 
 export interface StrayLine {

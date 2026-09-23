@@ -213,6 +213,25 @@ export function visiblePaths(roots: readonly TreeNode[]): number[][] {
   return out
 }
 
+/**
+ * 見えているノードのうち、同じ深さで上（下）にある最初のノード。兄弟が尽きたら親を
+ * 跨いで、いとこへ移る。上から順に並べると、次の兄弟は子孫のすぐ後に来るので、深さで
+ * 絞るだけで兄弟が先に見つかる。
+ */
+export function sameDepthNeighbor(
+  roots: readonly TreeNode[],
+  path: NodePath,
+  direction: 'up' | 'down',
+): number[] | null {
+  const peers = visiblePaths(roots).filter((p) => p.length === path.length)
+  const key = path.join('.')
+  const index = peers.findIndex((p) => p.join('.') === key)
+  if (index < 0) {
+    return null
+  }
+  return peers[index + (direction === 'up' ? -1 : 1)] ?? null
+}
+
 /** 折りたたみの状態を、ID（パス）の集合として取り出す */
 export function collapsedIds(roots: readonly TreeNode[]): string[] {
   const out: string[] = []

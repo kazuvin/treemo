@@ -1,4 +1,4 @@
-import { parseInline, plainText } from './inline'
+import { parseInline, plainText, splitMatches } from './inline'
 
 describe('parseInline', () => {
   it('reads strong, emphasis, code, strikethrough and links', () => {
@@ -41,5 +41,21 @@ describe('parseInline', () => {
 describe('plainText', () => {
   it('drops the markup and joins lines', () => {
     expect(plainText('**値引き**が増えた\n[詳細](x)')).toBe('値引きが増えた 詳細')
+  })
+})
+
+describe('splitMatches', () => {
+  it('marks every hit and keeps the rest', () => {
+    expect(splitMatches('a beta b beta', /beta/i)).toEqual([
+      { text: 'a ', match: false },
+      { text: 'beta', match: true },
+      { text: ' b ', match: false },
+      { text: 'beta', match: true },
+    ])
+  })
+
+  it('ignores empty matches and a missing query', () => {
+    expect(splitMatches('abc', /x*/)).toEqual([{ text: 'abc', match: false }])
+    expect(splitMatches('abc', null)).toEqual([{ text: 'abc', match: false }])
   })
 })

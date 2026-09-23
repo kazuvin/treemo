@@ -1,5 +1,6 @@
 import { invoke } from '@tauri-apps/api/core'
 import { z } from 'zod'
+import { vimConfigSchema } from '@/features/editor/utils/vim-config'
 import { DEFAULT_THEME } from '@/lib/theme'
 
 /**
@@ -22,6 +23,7 @@ const schema = z.object({
   theme: z.string().catch(DEFAULT_THEME),
   // 中身は theme.ts の sanitizeCustomThemes で 1 つずつ確かめる
   customThemes: z.array(z.unknown()).catch([]),
+  vim: vimConfigSchema.prefault({}),
   notes: z.record(z.string(), noteStateSchema).default({}),
 })
 

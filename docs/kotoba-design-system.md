@@ -57,6 +57,7 @@ claude.ai/design のプロジェクト **"Kotoba Design System"** からこの�
 | フォーカスリング        | `ring`                           | = `accent`            | `--color-focus-ring`                  |
 | 選択ティント            | `selected`                       | `#FEEFF5`             | `--color-selected-bg`                 |
 | 選択枠線                | `selected-border`                | = `accent`            | `--color-selected-border`             |
+| 検索の当たり            | `search-match`                   | `#FFFF0054`           | `--color-search-match`                |
 
 ニュートラルランプは `gray-0 / 25 / 50 / 100 / 200 / 300 / 400 / 500 / 600 / 800 / 900` の 11 段。
 Tailwind 標準の `gray` は `--color-gray-*: initial` で消してあるので、`gray-700` や `gray-950`
@@ -209,6 +210,9 @@ kazuvin.me ではページの上端が兄弟要素ではなくブラウザの UI
 意味の開示はアニメーションではなく即時のレイアウト変更 — 学習者は読んでいる最中で、
 文字の下で動きが起きるのはコストだから。
 
+例外はツリーブロックだけで、形が変わったときにノードの位置を滑らせる
+（[tree-block.md](tree-block.md) の「動き」）。
+
 ---
 
 ## コンポーネント
@@ -339,7 +343,7 @@ tier-1 の画面端スペーシング (24 / 32 / 24) を供給するシェル。
 kazuvin.me（Next.js）に取り込んだものを、トークン層と文書ごと持ってきた。
 
 - **コンポーネントは要るものだけを置いている。** `src/components/ui/` にあるのは
-  `Button`（上の節と同じ 2 層の DOM）、`Kbd`（キーの表記）、`OverlayPanel`（パレットや
+  `Button`（上の節と同じ 2 層の DOM）、`Kbd`（キーの表記）、`Code`（本文の中のコード `hoge` の見た目。大きさと色は周りに合わせる）、`KeyHints`（`Code` でキーを示す控えめな案内の 1 行）、`OverlayPanel`（パレットや
   ダイアログを重ねる箱。影は使わず 1px の線で分ける）、`PromptDialog`（名前の入力と削除の確認）。
   `Text` / `Toast` / `Screen` はまだ無い。消えて困る知らせはトーストにしない決まりなので、
   `Toast` は要るまで入れない。

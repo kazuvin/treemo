@@ -1,12 +1,15 @@
 import { history } from '@codemirror/commands'
+import { SearchQuery, setSearchQuery } from '@codemirror/search'
 import { EditorState } from '@codemirror/state'
 import { EditorView } from '@codemirror/view'
+import { getCM, Vim, vim } from '@replit/codemirror-vim'
 import { useStatusStore } from '@/stores/status-store'
 import {
   addChild,
   addSibling,
   commitEdit,
   deleteSubtree,
+  editNode,
   enterTree,
   exitTree,
   indent,
@@ -16,6 +19,7 @@ import {
   moveSelection,
   outdent,
   paste,
+  searchInTree,
   selectLastLeaf,
   swap,
   toggleFold,
@@ -24,7 +28,7 @@ import {
   yankSubtree,
 } from './tree-actions'
 import { treeExtension } from './tree-extension'
-import { treeUiField } from './tree-state'
+import { hitPathAtCursor, keepCursorInBlock, searchHighlightField, treeUiField } from './tree-state'
 
 const before = '# メモ\n\n前の段落'
 const after = '後ろの段落\n'
@@ -131,6 +135,24 @@ describe('building the tree', () => {
     expect(blockText(view)).toBe('```tree\n- a\n```')
   })
 
+  it('removes an existing leaf emptied with Esc', () => {
+    view = setup('```tree\n- a\n- b\n```')
+    enterTree(view)
+    moveSelection(view, 'down')
+    editNode(view, 'end')
+    commitEdit(view, '   ', 'done')
+    expect(blockText(view)).toBe('```tree\n- a\n```')
+  })
+
+  it('restores an emptied node that has children instead of dropping its subtree', () => {
+    view = setup('```tree\n- a\n  - b\n```')
+    enterTree(view)
+    editNode(view, 'end')
+    commitEdit(view, ' ', 'sibling')
+    expect(blockText(view)).toBe('```tree\n- a\n  - b\n```')
+    expect(view.state.field(treeUiField).active?.editing).toBeNull()
+  })
+
   it('keeps multi-line content', () => {
     view = setup('```tree\n- a\n```')
     enterTree(view)
@@ -212,5 +234,83 @@ describe('source view and new blocks', () => {
     expect(view.state.doc.toString()).toBe('text\n```tree\n-\n```\nmore')
     commitEdit(view, 'root', 'done')
     expect(view.state.doc.toString()).toBe('text\n```tree\n- root\n```\nmore')
+  })
+})
+
+describe('search hits inside a block', () => {
+  // Vim の `/` は、当たった文字の位置へカーソルを置くだけ。同じことをここで起こす
+  function cursorAt(text: string, keep = false) {
+    view.dispatch({
+      selection: { anchor: view.state.doc.toString().indexOf(text) },
+      annotations: keep ? keepCursorInBlock.of(true) : [],
+    })
+  }
+
+  it('points at the node whose line holds the cursor, including continuation lines', () => {
+    view = setup('```tree\n- a\n  - b\n    続き\n- c\n```')
+    cursorAt('続き', true)
+    expect(hitPathAtCursor(view.state)).toEqual([0, 0])
+    cursorAt('c\n```', true)
+    expect(hitPathAtCursor(view.state)).toEqual([1])
+    cursorAt('```tree', true)
+    expect(hitPathAtCursor(view.state)).toBeNull()
+  })
+
+  it('selects the hit node in TREE (NORMAL)', () => {
+    view = setup('```tree\n- a\n  - b\n- c\n```')
+    cursorAt('b\n')
+    expect(isTreeActive(view.state)).toBe(true)
+    expect(selected(view)).toEqual([0, 0])
+    expect(view.state.field(treeUiField).active?.editing).toBeNull()
+  })
+
+  it('selects the folded ancestor of a hidden hit', () => {
+    view = setup('```tree\n- a\n  - b\n```')
+    enterTree(view)
+    toggleFold(view)
+    exitTree(view)
+    cursorAt('b\n```')
+    expect(selected(view)).toEqual([0])
+  })
+
+  it('stays out of TREE mode for a block with stray lines and only points at the node', () => {
+    view = setup('```tree\nintro\n- a\n```')
+    cursorAt('a\n```')
+    expect(isTreeActive(view.state)).toBe(false)
+    expect(hitPathAtCursor(view.state)).toEqual([0])
+  })
+
+  it('continues the search with n and N from the selected node', () => {
+    const doc = '# beta\n```tree\n- beta one\n- two\n- beta three\n```\n'
+    view = new EditorView({
+      parent: document.body,
+      state: EditorState.create({ doc, extensions: [vim(), treeExtension()] }),
+    })
+    const cm = getCM(view)
+    if (!cm) {
+      throw new Error('vim is missing')
+    }
+    view.dispatch({ selection: { anchor: 2 } })
+    Vim.handleKey(cm, '*', 'user')
+    expect(selected(view)).toEqual([0])
+    searchInTree(view, 'next')
+    expect(selected(view)).toEqual([2])
+    searchInTree(view, 'next')
+    expect(isTreeActive(view.state)).toBe(false)
+    expect(view.state.selection.main.head).toBe(2)
+    Vim.handleKey(cm, 'N', 'user')
+    expect(selected(view)).toEqual([2])
+    searchInTree(view, 'prev')
+    expect(selected(view)).toEqual([0])
+  })
+
+  it('follows the query Vim highlights and drops it on :noh', () => {
+    view = setup('```tree\n- a\n```')
+    const query = Object.assign(new SearchQuery({ search: 'Be.a', regexp: true }), { forVim: true })
+    view.dispatch({ effects: setSearchQuery.of(query) })
+    expect(view.state.field(searchHighlightField)?.flags).toBe('gi')
+    query.forVim = false
+    view.dispatch({ effects: setSearchQuery.of(query) })
+    expect(view.state.field(searchHighlightField)).toBeNull()
   })
 })

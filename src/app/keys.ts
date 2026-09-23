@@ -60,7 +60,7 @@ export function getScopes(): KeyScope[] {
     return [...scopes, 'sidebar', 'normal']
   }
   const view = getContext().view
-  if (mode.focus !== 'editor' || !view || mode.nodeEdit) {
+  if (mode.focus !== 'editor' || !view || mode.nodeEditing) {
     return scopes
   }
   if (mode.tree) {

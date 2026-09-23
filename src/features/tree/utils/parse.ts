@@ -52,7 +52,7 @@ export function parseNodes(
     if (match) {
       const indent = match[1]?.length ?? 0
       const spaces = match[2]?.length ?? 1
-      const node: TreeNode = { id: '', content: match[3] ?? '', children: [] }
+      const node: TreeNode = { id: '', content: match[3] ?? '', children: [], line: i + lineOffset }
       while (stack.length > 0 && (stack.at(-1)?.indent ?? 0) >= indent) {
         stack.pop()
       }

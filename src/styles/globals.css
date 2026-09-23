@@ -101,6 +101,8 @@
   --color-ring: var(--color-accent);
   --color-selected: var(--color-accent-tint);
   --color-selected-border: var(--color-accent);
+  /** 検索の当たり。本文は codemirror-vim の既定の色で光るので、ツリーの絵も同じ色にする */
+  --color-search-match: #ffff0054;
 
   /** ---- セマンティック: 無効状態 ---- */
   --color-disabled: var(--color-gray-100);
@@ -243,7 +245,7 @@
 
   /** ---- モーション ----
       120ms、color と opacity のみ。バウンスもスプリングも無く、中身を拡大縮小
-      させることもしない。 */
+      させることもしない。ツリーブロックだけは位置も動かす（docs/tree-block.md の「動き」） */
   --ease-standard: cubic-bezier(0.2, 0, 0.2, 1);
 
   /** アニメーション */
@@ -264,6 +266,9 @@
   --animate-fade-scale-out: var(--animate-fade-out), var(--animate-scale-out);
   --animate-fade-slide-up: var(--animate-fade-in), var(--animate-slide-up);
   --animate-fade-slide-left: var(--animate-fade-in), var(--animate-slide-left);
+  /** ツリーの印がノードから離れる向きへ少し滑って現れる */
+  --animate-nudge-in-x: 0.16s var(--ease-standard) nudge-in-x;
+  --animate-nudge-in-y: 0.16s var(--ease-standard) nudge-in-y;
 
   /** キーフレーム */
   @keyframes fade-in {
@@ -339,6 +344,20 @@
     }
     to {
       transform: translateY(0);
+    }
+  }
+
+  @keyframes nudge-in-x {
+    from {
+      opacity: 0;
+      transform: translateX(-4px);
+    }
+  }
+
+  @keyframes nudge-in-y {
+    from {
+      opacity: 0;
+      transform: translateY(-4px);
     }
   }
 

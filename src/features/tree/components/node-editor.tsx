@@ -1,9 +1,8 @@
-import { insertNewline } from '@codemirror/commands'
+import { defaultKeymap, history, historyKeymap, insertNewline } from '@codemirror/commands'
 import { EditorState, Prec } from '@codemirror/state'
 import { EditorView, keymap } from '@codemirror/view'
-import { getCM, vim, Vim } from '@replit/codemirror-vim'
 import { useEffect, useEffectEvent, useRef } from 'react'
-import { useModeStore, type VimMode } from '@/stores/mode-store'
+import { useModeStore } from '@/stores/mode-store'
 import type { Editing } from '../extensions/tree-state'
 
 export type CommitNext = 'sibling' | 'child' | 'done'
@@ -12,7 +11,11 @@ interface NodeEditorProps {
   initial: string
   cursor: Editing['cursor']
   onCommit: (text: string, next: CommitNext) => void
+  /** 中身に文字があるか（空白だけなら無い）。開いたときと変わったときに知らせる */
+  onHasTextChange: (hasText: boolean) => void
 }
+
+const hasText = (state: EditorState) => state.doc.toString().trim() !== ''
 
 const theme = EditorView.theme({
   '&': { fontSize: 'var(--text-base)', background: 'transparent' },
@@ -26,36 +29,24 @@ const theme = EditorView.theme({
     minWidth: '8ch',
   },
   '.cm-line': { padding: '0 !important' },
-  '.cm-fat-cursor': {
-    background: 'var(--color-gray-900) !important',
-    color: 'var(--color-gray-0) !important',
+  // 本文のエディタの Vim は、配下の行の文字カーソルと選択の色を透明にする
+  // （`.cm-vimMode .cm-line`）。このエディタは Vim を使わないので、詳細度を上げて戻す
+  '&.cm-editor .cm-content .cm-line': { caretColor: 'var(--color-foreground) !important' },
+  '&.cm-editor .cm-content .cm-line::selection, &.cm-editor .cm-content .cm-line ::selection': {
+    backgroundColor: 'var(--color-selected) !important',
   },
 })
 
-function isInsert(view: EditorView): boolean {
-  return Boolean(getCM(view)?.state.vim?.insertMode)
-}
-
-function isPending(view: EditorView): boolean {
-  const input = getCM(view)?.state.vim?.inputState
-  return input != null && (input.operator != null || input.keyBuffer.length > 0)
-}
-
-function toVimMode(mode: string): VimMode {
-  if (mode === 'insert' || mode === 'replace') {
-    return 'INSERT'
-  }
-  return mode === 'visual' ? 'VISUAL' : 'NORMAL'
-}
-
 /**
- * ノードの上に開く小さなエディタ（F-TREE-4）。INSERT の Enter / Tab は
- * マインドマップの道具と同じ意味にしてある（docs/keybindings.md の「ノード編集」）。
+ * ノードの上に開く小さなエディタ（F-TREE-4）。TREE の INSERT にあたり、Esc で確定して
+ * TREE の NORMAL へ戻る。Enter / Tab はマインドマップの道具と同じ意味にしてある
+ * （docs/keybindings.md の「ノード編集」）。
  */
-export function NodeEditor({ initial, cursor, onCommit }: NodeEditorProps) {
+export function NodeEditor({ initial, cursor, onCommit, onHasTextChange }: NodeEditorProps) {
   const ref = useRef<HTMLDivElement>(null)
   const commit = useEffectEvent((text: string, next: CommitNext) => onCommit(text, next))
   const start = useEffectEvent(() => ({ initial, cursor }))
+  const reportText = useEffectEvent((value: boolean) => onHasTextChange(value))
 
   useEffect(() => {
     const parent = ref.current
@@ -75,36 +66,39 @@ export function NodeEditor({ initial, cursor, onCommit }: NodeEditorProps) {
     }
     const keys = Prec.highest(
       keymap.of([
-        { key: 'Enter', run: (v) => isInsert(v) && (finish(v, 'sibling'), true) },
-        { key: 'Tab', run: (v) => isInsert(v) && (finish(v, 'child'), true) },
-        { key: 'Shift-Enter', run: (v) => isInsert(v) && insertNewline(v) },
-        {
-          key: 'Escape',
-          run: (v) => !isInsert(v) && !isPending(v) && (finish(v, 'done'), true),
-        },
+        { key: 'Enter', run: (v) => (finish(v, 'sibling'), true) },
+        // 中身の無い親には子を付けない。true を返してフォーカスが外へ出ないようにする
+        { key: 'Tab', run: (v) => (hasText(v.state) && finish(v, 'child'), true) },
+        { key: 'Shift-Enter', run: insertNewline },
+        { key: 'Escape', run: (v) => (finish(v, 'done'), true) },
       ]),
     )
-    const setNodeEdit = useModeStore.getState().setNodeEdit
+    const setNodeEditing = useModeStore.getState().setNodeEditing
     const view = new EditorView({
       parent,
       state: EditorState.create({
         doc: at === 'empty' ? '' : doc,
-        extensions: [vim(), keys, EditorView.lineWrapping, theme],
+        extensions: [
+          history(),
+          keys,
+          keymap.of([...defaultKeymap, ...historyKeymap]),
+          EditorView.lineWrapping,
+          EditorView.updateListener.of((update) => {
+            if (update.docChanged) {
+              reportText(hasText(update.state))
+            }
+          }),
+          theme,
+        ],
       }),
     })
-    const cm = getCM(view)
-    const onMode = (event: { mode: string }) => setNodeEdit(toVimMode(event.mode))
-    cm?.on('vim-mode-change', onMode)
     view.dispatch({ selection: { anchor: at === 'start' ? 0 : view.state.doc.length } })
     view.focus()
-    if (cm) {
-      Vim.handleKey(cm, at === 'end' ? 'a' : 'i', 'user')
-    }
-    setNodeEdit('INSERT')
+    reportText(hasText(view.state))
+    setNodeEditing(true)
     return () => {
-      cm?.off('vim-mode-change', onMode)
       view.destroy()
-      setNodeEdit(null)
+      setNodeEditing(false)
     }
   }, [])
 

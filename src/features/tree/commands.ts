@@ -26,6 +26,7 @@ import {
   swap,
   toggleFold,
   toggleFullscreen,
+  searchInTree,
   toggleSource,
   undoInTree,
   yankSubtree,
@@ -133,4 +134,6 @@ export const treeCommands: Command[] = [
   treeCommand('tree.redo', 'やり直す', ['<C-r>'], redoInTree),
   treeCommand('tree.fullscreen', 'インラインと全画面を切り替える', ['F'], toggleFullscreen),
   treeCommand('tree.exit', 'TREE モードを出る', ['Esc', 'q'], exitTree),
+  treeCommand('tree.searchNext', '次の検索の当たりへ', ['n'], (view) => searchInTree(view, 'next')),
+  treeCommand('tree.searchPrev', '前の検索の当たりへ', ['N'], (view) => searchInTree(view, 'prev')),
 ]

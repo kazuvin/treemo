@@ -1,3 +1,5 @@
+import { Code } from '@/components/ui/code'
+import { type KeyHint, KeyHints } from '@/components/ui/key-hints'
 import { cn } from '@/lib/cn'
 import type { Editing } from '../extensions/tree-state'
 import type { StrayLine, TreeNode } from '../types/tree'
@@ -11,16 +13,30 @@ import { TreeCanvas } from './tree-canvas'
  */
 export type BlockStatus = 'idle' | 'selected' | 'tree' | 'fullscreen'
 
+const SELECTED_HINTS: KeyHint[] = [
+  { keys: ['Enter'], label: 'TREE モード' },
+  { keys: ['gs'], label: 'ソース' },
+  { keys: ['j', 'k'], label: '前後の行へ' },
+]
+
+const EMPTY_HINTS: KeyHint[] = [
+  { keys: ['Enter'], label: 'TREE モードに入る' },
+  { keys: ['o'], label: 'ノードを足す' },
+]
+
 interface TreeBlockViewProps {
   status: BlockStatus
   roots: TreeNode[]
   strayLines: StrayLine[]
   selectedId: string | null
+  hitId: string | null
+  search: RegExp | null
   editing: Editing | null
   showGuide: boolean
   onSelectBlock: () => void
   onSelectNode: (path: number[]) => void
   onEditNode: (path: number[]) => void
+  onAddNode: (path: number[], where: 'child' | 'sibling') => void
   onCommit: (text: string, next: CommitNext) => void
 }
 
@@ -29,11 +45,14 @@ export function TreeBlockView({
   roots,
   strayLines,
   selectedId,
+  hitId,
+  search,
   editing,
   showGuide,
   onSelectBlock,
   onSelectNode,
   onEditNode,
+  onAddNode,
   onCommit,
 }: TreeBlockViewProps) {
   return (
@@ -55,47 +74,45 @@ export function TreeBlockView({
       }}
     >
       {status === 'fullscreen' ? (
-        <p className="text-sm text-muted-foreground">全画面で編集しています · F で戻る</p>
+        <KeyHints hints={[{ keys: ['F'], label: '全画面で編集しています。インラインに戻す' }]} />
       ) : (
         <>
-          <div className="overflow-x-auto pb-5">
+          <div className="overflow-x-auto">
             {roots.length > 0 ? (
               <TreeCanvas
                 roots={roots}
                 selectedId={status === 'tree' ? selectedId : null}
+                hitId={status === 'selected' ? hitId : null}
+                search={search}
                 editing={status === 'tree' ? editing : null}
+                showGuide={showGuide}
                 onSelectNode={onSelectNode}
                 onEditNode={onEditNode}
+                onAddNode={onAddNode}
                 onCommit={onCommit}
               />
             ) : (
-              <p className="text-sm text-muted-foreground">
-                空のツリー · Enter で TREE モードに入り、o でノードを足す
-              </p>
+              <KeyHints hints={EMPTY_HINTS} />
             )}
           </div>
           {strayLines.length > 0 && (
-            <div className="mt-2 border-t border-border-hairline pt-2 text-xs text-subtle-foreground">
+            <div className="mt-2 border-t border-border-hairline pt-2 text-2xs text-subtle-foreground">
               <p>
-                読めない行が {strayLines.length} 行あります。gs でソースを表示して直してください。
-                直すまで TREE モードには入れません。
+                読めない行が {strayLines.length} 行あります。<Code>gs</Code>
+                でソースを表示して直してください。直すまで TREE モードには入れません。
               </p>
               <ul className="mt-1 text-muted-foreground">
                 {strayLines.slice(0, 3).map((stray) => (
                   <li key={stray.line}>
-                    {stray.line + 1} 行目: <code>{stray.text.trim()}</code>
+                    {stray.line + 1} 行目: <Code>{stray.text.trim()}</Code>
                   </li>
                 ))}
               </ul>
             </div>
           )}
-          {status === 'selected' && (
-            <p className="mt-1 text-2xs text-muted-foreground">
-              Enter TREE モード · gs ソース · j / k 前後の行へ
-            </p>
-          )}
+          {status === 'selected' && <KeyHints className="mt-2" hints={SELECTED_HINTS} />}
           {status === 'tree' && (
-            <div className="mt-1">
+            <div className="mt-2">
               <KeyGuide editing={editing} show={showGuide} />
             </div>
           )}

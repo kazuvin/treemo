@@ -1,14 +1,26 @@
-import { type EditorState, type Extension, type Range, StateField } from '@codemirror/state'
+import { EditorState, type Extension, type Range, StateField } from '@codemirror/state'
 import { Decoration, type DecorationSet, EditorView, ViewPlugin } from '@codemirror/view'
 import { useModeStore } from '@/stores/mode-store'
 import { useTreeStore } from '../stores/tree-store'
 import { collapsedIds } from '../utils/ops'
-import { activeBlock, blockAtCursor, blocksField, rootsOf, treeUiField } from './tree-state'
+import { enterTreeSpec } from './tree-actions'
+import {
+  activeBlock,
+  blockAtCursor,
+  blocksField,
+  hitPathAtCursor,
+  keepCursorInBlock,
+  rootsOf,
+  searchHighlightField,
+  treeUiField,
+} from './tree-state'
 import { TreeWidget } from './tree-widget'
 
 function buildDecorations(state: EditorState): DecorationSet {
   const ui = state.field(treeUiField)
   const onBlock = blockAtCursor(state)
+  const hitId = hitPathAtCursor(state)?.join('.') ?? null
+  const search = state.field(searchHighlightField)
   const ranges: Range<Decoration>[] = []
   for (const block of state.field(blocksField)) {
     if (block.from === ui.source) {
@@ -29,6 +41,8 @@ function buildDecorations(state: EditorState): DecorationSet {
       roots,
       strayLines: block.block.strayLines,
       selectedId: active?.path?.join('.') ?? null,
+      hitId: status === 'selected' ? hitId : null,
+      search,
       editing: active?.editing ?? null,
       foldKey: collapsedIds(roots).join(','),
     })
@@ -43,7 +57,8 @@ const decorationsField = StateField.define<DecorationSet>({
     if (
       tr.docChanged ||
       tr.selection ||
-      tr.startState.field(treeUiField) !== tr.state.field(treeUiField)
+      tr.startState.field(treeUiField) !== tr.state.field(treeUiField) ||
+      tr.startState.field(searchHighlightField) !== tr.state.field(searchHighlightField)
     ) {
       return buildDecorations(tr.state)
     }
@@ -99,11 +114,34 @@ const publisher = ViewPlugin.define((view) => {
   }
 })
 
+/**
+ * Vim の検索などでカーソルがノードの行に置かれたら、そのノードを選んで TREE (NORMAL) に入る
+ * （docs/tree-block.md の「検索」）。読めない行があるブロックでは入れないので、当たりを示すだけにする
+ */
+const enterOnHit = EditorState.transactionFilter.of((tr) => {
+  if (!tr.selection || tr.docChanged || tr.annotation(keepCursorInBlock)) {
+    return tr
+  }
+  const state = tr.state
+  if (!state.selection.main.empty) {
+    return tr
+  }
+  const block = blockAtCursor(state)
+  const path = hitPathAtCursor(state)
+  if (!block || !path || block.block.strayLines.length > 0) {
+    return tr
+  }
+  return [tr, { ...enterTreeSpec(state, block, path), sequential: true }]
+})
+
 /** ブロックの絵が占める範囲は、カーソルの移動では 1 つのまとまりとして飛ばす */
 const atomic = EditorView.atomicRanges.of((view) => view.state.field(decorationsField))
 
-/** ブロックの上では本文のカーソルがブロックの端に残って見えるので隠す。選択状態は枠で示す */
-const hideCursorOnBlock = [
+/**
+ * ブロックの上では本文のカーソルがブロックの端に残って見えるので隠す（選択状態は枠で示す）。
+ * あわせて絵の幅を本文にそろえる
+ */
+const blockTheme = [
   EditorView.editorAttributes.of((view) =>
     blockAtCursor(view.state) ? { class: 'cm-on-tree-block' } : null,
   ),
@@ -111,10 +149,21 @@ const hideCursorOnBlock = [
     '&.cm-on-tree-block .cm-fat-cursor, &.cm-on-tree-block .cm-cursor': {
       visibility: 'hidden',
     },
+    // 本文の行は左右に余白を持つ（.cm-line）。絵の幅を本文の幅にそろえる
+    '.cm-tree-block': { padding: '0 var(--spacing-edge-h)' },
   }),
 ]
 
 /** エディタにツリーブロックを載せる拡張。app が features/editor に渡す */
 export function treeExtension(): Extension {
-  return [blocksField, treeUiField, decorationsField, publisher, atomic, hideCursorOnBlock]
+  return [
+    blocksField,
+    treeUiField,
+    searchHighlightField,
+    decorationsField,
+    enterOnHit,
+    publisher,
+    atomic,
+    blockTheme,
+  ]
 }

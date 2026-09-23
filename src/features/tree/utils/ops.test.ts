@@ -6,6 +6,7 @@ import {
   insertSibling,
   outdentNode,
   removeNode,
+  sameDepthNeighbor,
   swapNode,
   toggleCollapsed,
   visiblePaths,
@@ -119,6 +120,29 @@ describe('visiblePaths', () => {
     const folded = toggleCollapsed(base, [0]).roots
     expect(visiblePaths(folded)).toEqual([[0], [1]])
     expect(visiblePaths(base)).toEqual([[0], [0, 0], [0, 1], [1]])
+  })
+})
+
+describe('sameDepthNeighbor', () => {
+  const cousins = tree('- a', '  - a1', '    - x', '  - a2', '- b', '  - b1')
+
+  it('moves to the next sibling first', () => {
+    expect(sameDepthNeighbor(cousins, [0, 0], 'down')).toEqual([0, 1])
+  })
+
+  it('crosses the parent to a cousin at the same depth', () => {
+    expect(sameDepthNeighbor(cousins, [0, 1], 'down')).toEqual([1, 0])
+    expect(sameDepthNeighbor(cousins, [1, 0], 'up')).toEqual([0, 1])
+  })
+
+  it('skips nodes hidden by a fold', () => {
+    const folded = toggleCollapsed(cousins, [1]).roots
+    expect(sameDepthNeighbor(folded, [0, 1], 'down')).toBeNull()
+  })
+
+  it('stops at the edge', () => {
+    expect(sameDepthNeighbor(cousins, [0], 'up')).toBeNull()
+    expect(sameDepthNeighbor(cousins, [0, 0, 0], 'down')).toBeNull()
   })
 })
 

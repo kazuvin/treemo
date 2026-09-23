@@ -10,14 +10,14 @@ interface ModeState {
   vim: VimMode
   /** TREE モードの中か */
   tree: boolean
-  /** TREE モードでノードを編集している間の、小さなエディタの Vim のモード */
-  nodeEdit: VimMode | null
+  /** TREE モードでノードを編集しているか（TREE の INSERT） */
+  nodeEditing: boolean
   /** カーソルがツリーブロックに乗っているか（ブロックの選択状態） */
   onTreeBlock: boolean
   focus: FocusArea
   setVim: (vim: VimMode) => void
   setTree: (tree: boolean) => void
-  setNodeEdit: (nodeEdit: VimMode | null) => void
+  setNodeEditing: (nodeEditing: boolean) => void
   setOnTreeBlock: (onTreeBlock: boolean) => void
   setFocus: (focus: FocusArea) => void
 }
@@ -25,20 +25,20 @@ interface ModeState {
 export const useModeStore = create<ModeState>()((set) => ({
   vim: 'NORMAL',
   tree: false,
-  nodeEdit: null,
+  nodeEditing: false,
   onTreeBlock: false,
   focus: 'editor',
   setVim: (vim) => set({ vim }),
   setTree: (tree) => set({ tree }),
-  setNodeEdit: (nodeEdit) => set({ nodeEdit }),
+  setNodeEditing: (nodeEditing) => set({ nodeEditing }),
   setOnTreeBlock: (onTreeBlock) => set({ onTreeBlock }),
   setFocus: (focus) => set({ focus }),
 }))
 
-/** ステータスバーに出す文字列。'TREE · INSERT' のように重ねる */
-export function modeLabel(state: Pick<ModeState, 'vim' | 'tree' | 'nodeEdit'>): string {
+/** ステータスバーに出す文字列。TREE では 'TREE (NORMAL)' のように中のモードを添える */
+export function modeLabel(state: Pick<ModeState, 'vim' | 'tree' | 'nodeEditing'>): string {
   if (state.tree) {
-    return state.nodeEdit ? `TREE · ${state.nodeEdit}` : 'TREE'
+    return `TREE (${state.nodeEditing ? 'INSERT' : 'NORMAL'})`
   }
   return state.vim
 }

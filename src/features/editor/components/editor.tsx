@@ -29,8 +29,9 @@ export function Editor({ extensions, onReady }: EditorProps) {
       return
     }
     const all = [
-      ...baseExtensions(),
+      // Vim は他のキー割り当てより前に置く。後ろだと macOS の Ctrl-d（1 文字削除）などが先に効く
       vimBridge((mode) => useModeStore.getState().setVim(mode)),
+      ...baseExtensions(),
       frontMatter(),
       livePreview(),
       ...extensions,

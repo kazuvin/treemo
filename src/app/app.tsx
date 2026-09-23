@@ -12,7 +12,7 @@ import { useCommandStore } from '@/features/commands/stores/command-store'
 import { keyLabel } from '@/features/commands/utils/key-label'
 import { Editor, type EditorHandle } from '@/features/editor/components/editor'
 import { tagClickHandler } from '@/features/editor/extensions/front-matter'
-import { setExHandlers } from '@/features/editor/extensions/vim-bridge'
+import { applyVimConfig, setExHandlers } from '@/features/editor/extensions/vim-bridge'
 import { TreeFullscreen } from '@/features/tree/components/tree-fullscreen'
 import { treeExtension } from '@/features/tree/extensions/tree-extension'
 import { useTreeStore } from '@/features/tree/stores/tree-store'
@@ -131,6 +131,7 @@ async function boot(): Promise<void> {
       notes.prefetch(vault.cursor)
     }
   })
+  applyVimConfig(state.vim)
   useUiStore.subscribe((ui, prev) => {
     if (ui.sidebarVisible !== prev.sidebarVisible || ui.sidebarSide !== prev.sidebarSide) {
       updatePersistedState((s) => ({

@@ -96,3 +96,33 @@ export function plainText(source: string): string {
     .map((line) => flatten(parseInline(line)))
     .join(' ')
 }
+
+export interface Piece {
+  text: string
+  /** 検索に当たった部分か */
+  match: boolean
+}
+
+/** 描く文字列を、検索に当たった部分とそれ以外に分ける。空の一致は当たりとして扱わない */
+export function splitMatches(value: string, query: RegExp | null): Piece[] {
+  if (!query || value === '') {
+    return [{ text: value, match: false }]
+  }
+  const re = new RegExp(query.source, query.flags.includes('g') ? query.flags : `${query.flags}g`)
+  const out: Piece[] = []
+  let last = 0
+  for (const m of value.matchAll(re)) {
+    if (m[0] === '') {
+      continue
+    }
+    if (m.index > last) {
+      out.push({ text: value.slice(last, m.index), match: false })
+    }
+    out.push({ text: m[0], match: true })
+    last = m.index + m[0].length
+  }
+  if (last < value.length) {
+    out.push({ text: value.slice(last), match: false })
+  }
+  return out
+}

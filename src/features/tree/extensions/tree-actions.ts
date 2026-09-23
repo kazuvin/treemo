@@ -3,7 +3,7 @@
  * （docs/architecture.md の「1 本の文書、1 本の履歴」）。
  */
 import { isolateHistory, redo, undo } from '@codemirror/commands'
-import type { EditorState } from '@codemirror/state'
+import type { EditorState, TransactionSpec } from '@codemirror/state'
 import type { EditorView } from '@codemirror/view'
 import { getCM, Vim } from '@replit/codemirror-vim'
 import { useStatusStore } from '@/stores/status-store'
@@ -19,6 +19,7 @@ import {
   type OpResult,
   outdentNode,
   removeNode,
+  sameDepthNeighbor,
   setAllCollapsed,
   setContent,
   swapNode,
@@ -33,6 +34,9 @@ import {
   blockAtCursor,
   blocksField,
   type Editing,
+  hitPathAtCursor,
+  keepCursorInBlock,
+  nodeLineSpan,
   type ParsedBlock,
   rootsOf,
   treeUiField,
@@ -115,11 +119,23 @@ export function enterTree(view: EditorView, from?: number, path?: number[]): boo
     view.dispatch({ selection: { anchor: block.from } })
     return false
   }
-  const ui = view.state.field(treeUiField)
+  const hit = from === undefined ? hitPathAtCursor(view.state) : null
+  view.dispatch(enterTreeSpec(view.state, block, path ?? hit))
+  view.focus()
+  return true
+}
+
+/** ブロックの TREE モードに入る変更。path が無ければ最初のルートを選ぶ */
+export function enterTreeSpec(
+  state: EditorState,
+  block: ParsedBlock,
+  path: number[] | null,
+): TransactionSpec {
+  const ui = state.field(treeUiField)
   const roots = rootsOf(block, ui)
   const fullscreen =
     ui.active?.from === block.from ? ui.active.fullscreen : useTreeStore.getState().preferFullscreen
-  view.dispatch({
+  return {
     selection: { anchor: block.from },
     effects: updateTreeUi.of((u) => ({
       ...u,
@@ -132,9 +148,38 @@ export function enterTree(view: EditorView, from?: number, path?: number[]): boo
         lastChild: {},
       },
     })),
+  }
+}
+
+/**
+ * TREE モードの n / N（docs/tree-block.md の「検索」）。選んでいるノードの後ろ（前）に
+ * カーソルを置いて、本文の Vim の検索を続ける。当たった先がノードなら、そこで TREE モードに入り直す
+ */
+export function searchInTree(view: EditorView, direction: 'next' | 'prev'): void {
+  const cur = current(view.state)
+  const cm = getCM(view)
+  const path = cur?.active.path
+  if (!cur || !cm || !path) {
+    return
+  }
+  const span = nodeLineSpan(view.state, cur.block, path)
+  if (!span) {
+    return
+  }
+  const doc = view.state.doc
+  const first = doc.lineAt(cur.block.from).number
+  const anchor =
+    direction === 'next' ? doc.line(first + span[1]).to : doc.line(first + span[0]).from
+  view.dispatch({
+    selection: { anchor },
+    effects: updateTreeUi.of((ui) => ({ ...ui, active: null })),
+    annotations: keepCursorInBlock.of(true),
   })
-  view.focus()
-  return true
+  Vim.handleKey(cm, direction === 'next' ? 'n' : 'N', 'user')
+  // 検索語が無いなどで動かなかったら、元のノードに戻る
+  if (!isTreeActive(view.state) && view.state.selection.main.head === anchor) {
+    enterTree(view, cur.block.from, path)
+  }
 }
 
 export function exitTree(view: EditorView): void {
@@ -267,14 +312,9 @@ export function moveSelection(view: EditorView, direction: 'parent' | 'child' | 
       }
       break
     case 'up':
-    case 'down': {
-      const index = (path.at(-1) ?? 0) + (direction === 'up' ? -1 : 1)
-      const siblings = path.length > 1 ? getNode(cur.roots, path.slice(0, -1))?.children : cur.roots
-      if (siblings && index >= 0 && index < siblings.length) {
-        next = [...path.slice(0, -1), index]
-      }
+    case 'down':
+      next = sameDepthNeighbor(cur.roots, path, direction)
       break
-    }
     default:
       break
   }
@@ -321,6 +361,21 @@ export function addChild(view: EditorView): void {
   )
 }
 
+/** 印を押したとき。そのノードを選び、子か下の兄弟を足して書き始める */
+export function addNodeAt(
+  view: EditorView,
+  from: number,
+  path: number[],
+  where: 'child' | 'sibling',
+): void {
+  selectNode(view, from, path)
+  if (where === 'child') {
+    addChild(view)
+  } else {
+    addSibling(view, 'below')
+  }
+}
+
 export function editNode(view: EditorView, cursor: Editing['cursor']): void {
   const cur = current(view.state)
   if (!cur || !cur.active.path || cur.active.editing) {
@@ -333,7 +388,8 @@ export function editNode(view: EditorView, cursor: Editing['cursor']): void {
 
 /**
  * ノード編集を確定する。next が 'sibling' / 'child' なら続けて次のノードを書き始める。
- * 中身が空のまま 'sibling' で確定したとき、足したばかりのノードを空のまま抜けたときは消す。
+ * 空白だけのノードは作らない（docs/keybindings.md の「ノード編集」）。空で確定したら、
+ * 子が無ければノードを消し、子があれば部分木を消さないよう編集前の中身に戻す。
  */
 export function commitEdit(view: EditorView, text: string, next: 'sibling' | 'child' | 'done') {
   const cur = current(view.state)
@@ -342,9 +398,13 @@ export function commitEdit(view: EditorView, text: string, next: 'sibling' | 'ch
     return
   }
   const content = normalizeContent(text)
-  if (content === '' && (next === 'sibling' || (next === 'done' && editing.isNew))) {
-    const removed = removeNode(cur.roots, editing.path)
-    commitTree(view, cur.block, removed.roots, { path: removed.path, editing: null })
+  if (content === '') {
+    if ((getNode(cur.roots, editing.path)?.children.length ?? 0) > 0) {
+      view.dispatch({ effects: patchActive({ editing: null }) })
+    } else {
+      const removed = removeNode(cur.roots, editing.path)
+      commitTree(view, cur.block, removed.roots, { path: removed.path, editing: null })
+    }
     view.focus()
     return
   }
@@ -375,10 +435,9 @@ export function swap(view: EditorView, direction: 'up' | 'down'): void {
   withTree(view, (roots, path) => (path ? swapNode(roots, path, direction) : null))
 }
 
-function setRegister(nodes: readonly TreeNode[]): void {
-  Vim.getRegisterController()
-    .getRegister('"')
-    .setText(`${serializeNodes(nodes).join('\n')}\n`, true)
+/** 本文の Vim と同じ入口で入れる。ヤンクならクリップボードにも写る（clipboard の設定） */
+function setRegister(nodes: readonly TreeNode[], operator: 'yank' | 'delete'): void {
+  Vim.getRegisterController().pushText(null, operator, serializeNodes(nodes).join('\n'), true)
 }
 
 export function deleteSubtree(view: EditorView): void {
@@ -388,7 +447,7 @@ export function deleteSubtree(view: EditorView): void {
     }
     const result = removeNode(roots, path)
     if (result.removed) {
-      setRegister([result.removed])
+      setRegister([result.removed], 'delete')
     }
     return result
   })
@@ -398,7 +457,7 @@ export function yankSubtree(view: EditorView): void {
   const cur = current(view.state)
   const node = cur?.active.path ? getNode(cur.roots, cur.active.path) : null
   if (node) {
-    setRegister([node])
+    setRegister([node], 'yank')
     useStatusStore.getState().show('部分木をコピーしました')
   }
 }

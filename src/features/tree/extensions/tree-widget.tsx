@@ -4,7 +4,7 @@ import { createRoot, type Root } from 'react-dom/client'
 import { type BlockStatus, TreeBlockView } from '../components/tree-block-view'
 import { useTreeStore } from '../stores/tree-store'
 import type { StrayLine, TreeNode } from '../types/tree'
-import { commitEdit, editNode, selectBlock, selectNode } from './tree-actions'
+import { addNodeAt, commitEdit, editNode, selectBlock, selectNode } from './tree-actions'
 import type { Editing } from './tree-state'
 
 export interface TreeWidgetProps {
@@ -14,6 +14,10 @@ export interface TreeWidgetProps {
   roots: TreeNode[]
   strayLines: StrayLine[]
   selectedId: string | null
+  /** 検索などでカーソルが中身の行に来たときの、その行のノード */
+  hitId: string | null
+  /** Vim が光らせている検索。無ければ null */
+  search: RegExp | null
   editing: Editing | null
   /** 折りたたみが変わったら描き直すための鍵 */
   foldKey: string
@@ -30,6 +34,8 @@ function GuideAwareView({ view, props }: { view: EditorView; props: TreeWidgetPr
       roots={props.roots}
       strayLines={props.strayLines}
       selectedId={props.selectedId}
+      hitId={props.hitId}
+      search={props.search}
       editing={props.editing}
       showGuide={showGuide}
       onSelectBlock={() => selectBlock(view, props.from)}
@@ -38,6 +44,7 @@ function GuideAwareView({ view, props }: { view: EditorView; props: TreeWidgetPr
         selectNode(view, props.from, path)
         editNode(view, 'end')
       }}
+      onAddNode={(path, where) => addNodeAt(view, props.from, path, where)}
       onCommit={(text, next) => commitEdit(view, text, next)}
     />
   )
@@ -60,6 +67,8 @@ export class TreeWidget extends WidgetType {
       a.source === b.source &&
       a.status === b.status &&
       a.selectedId === b.selectedId &&
+      a.hitId === b.hitId &&
+      a.search === b.search &&
       a.foldKey === b.foldKey &&
       a.editing?.path.join('.') === b.editing?.path.join('.') &&
       a.editing?.cursor === b.editing?.cursor

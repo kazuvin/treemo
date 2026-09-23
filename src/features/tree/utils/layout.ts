@@ -24,8 +24,6 @@ export interface LayoutOptions {
 interface Edge {
   from: string
   to: string
-  /** 直角に折れる線の頂点（親の右端の中央 → 子の左端の中央） */
-  points: [number, number][]
 }
 
 export interface TreeLayout {
@@ -140,29 +138,23 @@ export function layoutTree(
     if (p.node.collapsed) {
       continue
     }
-    const parent = rects.get(p.node.id)
     for (const child of p.node.children) {
-      const target = rects.get(child.id)
-      if (!parent || !target) {
-        continue
-      }
-      const startX = parent.x + parent.width
-      const startY = parent.y + parent.height / 2
-      const endX = target.x
-      const endY = target.y + target.height / 2
-      const midX = (columnX[p.depth + 1] ?? endX) - options.columnGap / 2
-      edges.push({
-        from: p.node.id,
-        to: child.id,
-        points: [
-          [startX, startY],
-          [midX, startY],
-          [midX, endY],
-          [endX, endY],
-        ],
-      })
+      edges.push({ from: p.node.id, to: child.id })
     }
   }
   const width = Math.max(0, x - options.columnGap)
   return { rects, edges, width, height }
+}
+
+/**
+ * 親の右端の中央から子の左端の中央へ引く S 字の曲線（SVG の path の d）。
+ * 両端で水平に出入りするよう、制御点は端点と同じ高さに横へ半分ずつ寄せる
+ */
+export function edgePath(parent: Rect, child: Rect): string {
+  const sx = parent.x + parent.width
+  const sy = parent.y + parent.height / 2
+  const ex = child.x
+  const ey = child.y + child.height / 2
+  const k = Math.max(0, ex - sx) / 2
+  return `M${sx},${sy} C${sx + k},${sy} ${ex - k},${ey} ${ex},${ey}`
 }

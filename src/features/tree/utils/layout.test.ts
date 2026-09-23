@@ -1,5 +1,5 @@
 import type { TreeNode } from '../types/tree'
-import { layoutTree, type Rect } from './layout'
+import { edgePath, layoutTree, type Rect } from './layout'
 import { toggleCollapsed } from './ops'
 import { parseNodes } from './parse'
 
@@ -83,16 +83,9 @@ describe('layoutTree', () => {
     expect(layout.edges).toHaveLength(1)
   })
 
-  it('draws elbow edges from the parent to the child', () => {
-    const { roots } = parseNodes(['- a', '  - b'])
-    const layout = check(roots)
-    const edge = layout.edges[0]
-    const a = layout.rects.get('0')
-    const b = layout.rects.get('0.0')
-    if (!edge || !a || !b) {
-      throw new Error('missing edge')
-    }
-    expect(edge.points[0]).toEqual([a.x + a.width, a.y + a.height / 2])
-    expect(edge.points.at(-1)).toEqual([b.x, b.y + b.height / 2])
+  it('draws curved edges from the parent to the child', () => {
+    const parent = { x: 0, y: 0, width: 40, height: 20 }
+    const child = { x: 80, y: 40, width: 40, height: 20 }
+    expect(edgePath(parent, child)).toBe('M40,10 C60,10 60,50 80,50')
   })
 })
