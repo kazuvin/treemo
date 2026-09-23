@@ -3,6 +3,7 @@ import { SearchQuery, setSearchQuery } from '@codemirror/search'
 import { EditorState } from '@codemirror/state'
 import { EditorView } from '@codemirror/view'
 import { getCM, Vim, vim } from '@replit/codemirror-vim'
+import { readingField, setReading } from '@/lib/reading'
 import { useStatusStore } from '@/stores/status-store'
 import {
   addChild,
@@ -41,7 +42,7 @@ function setup(block: string): EditorView {
     state: EditorState.create({
       doc,
       selection: { anchor: from },
-      extensions: [history(), treeExtension()],
+      extensions: [history(), treeExtension(), readingField],
     }),
   })
 }
@@ -74,6 +75,15 @@ describe('entering and leaving', () => {
     expect(enterDiagram(view)).toBe(true)
     expect(isDiagramActive(view.state)).toBe(true)
     expect(selected(view)).toEqual([0])
+  })
+
+  it('does not step onto or enter blocks in reading mode', () => {
+    view = setup('```tree\n- a\n```')
+    view.dispatch({ effects: setReading.of(true) })
+    expect(isOnTreeBlock(view.state)).toBe(false)
+    expect(enterDiagram(view)).toBe(false)
+    insertEmptyBlock(view)
+    expect(blockText(view)).toBe('```tree\n- a\n```')
   })
 
   it('refuses blocks with stray lines and explains why', () => {

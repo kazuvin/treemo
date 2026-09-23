@@ -33,6 +33,8 @@ const theme = EditorView.theme({
   // codemirror-vim はフォーカスが外れると枠だけのカーソルを残す。フォーカスの場所は
   // 領域の上端の線で示すので、本文に残る枠は消し忘れにしか見えない
   '&:not(.cm-focused) .cm-fat-cursor': { visibility: 'hidden' },
+  // 閲覧モードでは書けないので、カーソルは見せずに移動（スクロール）にだけ使う
+  '&.cm-reading .cm-cursor, &.cm-reading .cm-fat-cursor': { visibility: 'hidden' },
   '.cm-selectionBackground, &.cm-focused .cm-selectionBackground, ::selection': {
     backgroundColor: 'var(--color-selected) !important',
   },

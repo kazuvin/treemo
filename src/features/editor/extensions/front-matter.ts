@@ -15,6 +15,7 @@ import {
   type Property,
   tagsOf,
 } from '@/lib/front-matter'
+import { isReading, readingChanged } from '@/lib/reading'
 
 export interface FrontMatterRange {
   /** 開きの `---` の行頭 */
@@ -78,6 +79,9 @@ class PropertiesWidget extends WidgetType {
     root.title = 'クリックかカーソルを乗せると YAML を編集できます'
     root.addEventListener('mousedown', (event) => {
       event.preventDefault()
+      if (isReading(view.state)) {
+        return
+      }
       view.dispatch({ selection: { anchor: 0 } })
       view.focus()
     })
@@ -144,6 +148,9 @@ function tagChip(tag: string, onTag: ((tag: string) => void) | null): HTMLElemen
 }
 
 function touches(state: EditorState, range: FrontMatterRange): boolean {
+  if (isReading(state)) {
+    return false
+  }
   return state.selection.ranges.some((r) => r.from <= range.to && r.to >= range.from)
 }
 
@@ -170,7 +177,9 @@ function build(state: EditorState): DecorationSet {
 const decorations = StateField.define<DecorationSet>({
   create: build,
   update: (value, tr) =>
-    tr.docChanged || tr.selection || tr.reconfigured ? build(tr.state) : value,
+    tr.docChanged || tr.selection || tr.reconfigured || readingChanged(tr)
+      ? build(tr.state)
+      : value,
   provide: (field) => EditorView.decorations.from(field),
 })
 

@@ -11,6 +11,7 @@ import { useKeyDispatcher } from '@/features/commands/hooks/use-key-dispatcher'
 import { useCommandStore } from '@/features/commands/stores/command-store'
 import { keyLabel } from '@/features/commands/utils/key-label'
 import { DiagramFullscreen } from '@/features/diagram/components/diagram-fullscreen'
+import { exitDiagram, isDiagramActive } from '@/features/diagram/extensions/tree-actions'
 import { treeExtension } from '@/features/diagram/extensions/tree-extension'
 import { useDiagramStore } from '@/features/diagram/stores/diagram-store'
 import { Editor, type EditorHandle } from '@/features/editor/components/editor'
@@ -30,6 +31,7 @@ import { playAmbience, setAmbienceVolume } from '@/lib/ambience-player'
 import { cn } from '@/lib/cn'
 import { applyFontFamily, sanitizeFontFamily } from '@/lib/font-family'
 import { applyFontSize, sanitizeFontSize } from '@/lib/font-size'
+import { readingField, setReading } from '@/lib/reading'
 import { applyTheme, resolveTheme, sanitizeCustomThemes } from '@/lib/theme'
 import { useModeStore } from '@/stores/mode-store'
 import { useThemeStore } from '@/stores/theme-store'
@@ -45,11 +47,14 @@ import { focusEditor, restoreFocus, trackFocus } from './focus'
 import { clearStatusMessage, getContext, getScopes, replayKeys, swallowKey } from './keys'
 import { notes } from './note-controller'
 import { loadPersistedState, updatePersistedState } from './persisted-state'
+import { ReadingToggle } from './reading-toggle'
 import { SettingsScreen } from './settings-screen'
 import { type SidebarSide, useUiStore } from './ui-store'
 
 /** Editor に渡す拡張。作り直すとエディタごと作り直しになるので、ここで 1 度だけ作る */
 const editorExtensions = [
+  // メモを開き直すたびに今の表示（編集 / 閲覧）で始める
+  readingField.init(() => useUiStore.getState().reading),
   treeExtension(),
   notes.extension,
   tagClickHandler.of((tag) => void openTagSearch(tag)),
@@ -127,6 +132,7 @@ async function boot(): Promise<void> {
   const state = await loadPersistedState()
   useUiStore.getState().setSidebarVisible(state.sidebarVisible)
   useUiStore.getState().setSidebarSide(state.sidebarSide)
+  useUiStore.getState().setReading(state.reading)
   useUiStore.getState().setFontSize(sanitizeFontSize(state.fontSize))
   applyFontSize(useUiStore.getState().fontSize)
   useUiStore.getState().setFontFamily(sanitizeFontFamily(state.fontFamily))
@@ -171,9 +177,17 @@ async function boot(): Promise<void> {
     if (ui.bgmVolume !== prev.bgmVolume) {
       setAmbienceVolume(ui.bgmVolume)
     }
+    if (ui.reading !== prev.reading && editorView) {
+      // 閲覧モードでは図を組み立てられないので、DIAGRAM モードを出てから切り替える
+      if (ui.reading && isDiagramActive(editorView.state)) {
+        exitDiagram(editorView)
+      }
+      editorView.dispatch({ effects: setReading.of(ui.reading) })
+    }
     if (
       ui.sidebarVisible !== prev.sidebarVisible ||
       ui.sidebarSide !== prev.sidebarSide ||
+      ui.reading !== prev.reading ||
       ui.fontSize !== prev.fontSize ||
       ui.fontFamily !== prev.fontFamily ||
       ui.bgm !== prev.bgm ||
@@ -183,6 +197,7 @@ async function boot(): Promise<void> {
         ...s,
         sidebarVisible: ui.sidebarVisible,
         sidebarSide: ui.sidebarSide,
+        reading: ui.reading,
         fontSize: ui.fontSize,
         fontFamily: ui.fontFamily,
         bgm: ui.bgm,
@@ -228,6 +243,7 @@ export function App() {
   const themeAmbience = useThemeStore((s) => resolveTheme(s.theme, s.customThemes).ambience)
   const ambience = currentAmbience(bgm, themeAmbience)
   const settingsKey = keyLabel(commands, 'app.settings')
+  const readingKey = keyLabel(commands, 'app.toggleReading')
   const hint = (id: string, label: string) => {
     const key = keyLabel(commands, id)
     return key ? `${key} で${label}` : null
@@ -328,6 +344,7 @@ export function App() {
           <div className={cn('min-h-0 flex-1', !openPath && 'invisible')}>
             <Editor extensions={editorExtensions} onReady={attachEditor} />
           </div>
+          {openPath && <ReadingToggle keyLabel={readingKey} />}
           {!openPath && vault && (
             <div className="absolute inset-0 grid place-items-center text-muted-foreground">
               <p>

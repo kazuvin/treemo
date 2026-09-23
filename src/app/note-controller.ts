@@ -18,6 +18,7 @@ import { initialSession, useVaultStore } from '@/features/vault/stores/vault-sto
 import { displayName } from '@/features/vault/utils/file-tree'
 import { NoteCache } from '@/features/vault/utils/note-cache'
 import { NoteSession } from '@/features/vault/utils/note-session'
+import { allowWhileReading } from '@/lib/reading'
 import { useStatusStore } from '@/stores/status-store'
 import { noteKey, persistedState, setNoteState, updatePersistedState } from './persisted-state'
 
@@ -208,7 +209,11 @@ class NoteController {
     if (change) {
       view.dispatch({
         changes: change,
-        annotations: [externalLoad.of(true), Transaction.addToHistory.of(false)],
+        annotations: [
+          externalLoad.of(true),
+          allowWhileReading.of(true),
+          Transaction.addToHistory.of(false),
+        ],
       })
     }
   }

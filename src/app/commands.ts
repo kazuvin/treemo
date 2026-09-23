@@ -386,6 +386,15 @@ const appCommands: Command[] = [
     run: () => useUiStore.getState().setFontSize(DEFAULT_FONT_SIZE),
   },
   {
+    id: 'app.toggleReading',
+    title: '編集モードと閲覧モードを切り替える',
+    keys: [{ scope: 'global', sequence: '⌘E' }],
+    run: () => {
+      const ui = useUiStore.getState()
+      ui.setReading(!ui.reading)
+    },
+  },
+  {
     id: 'app.toggleSidebarSide',
     title: 'サイドバーを左右に置き換える',
     run: () => {

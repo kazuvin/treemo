@@ -23,6 +23,8 @@ interface UiState {
   bgm: BgmChoice
   /** BGM の音量（%） */
   bgmVolume: number
+  /** 閲覧モード（本文を書き換えず、どの行も装飾して見せる） */
+  reading: boolean
   settingsOpen: boolean
   prompt: PromptRequest | null
   setSidebarVisible: (sidebarVisible: boolean) => void
@@ -31,6 +33,7 @@ interface UiState {
   setFontFamily: (fontFamily: FontFamilyId) => void
   setBgm: (bgm: BgmChoice) => void
   setBgmVolume: (bgmVolume: number) => void
+  setReading: (reading: boolean) => void
   setSettingsOpen: (settingsOpen: boolean) => void
   setPrompt: (prompt: PromptRequest | null) => void
 }
@@ -42,6 +45,7 @@ export const useUiStore = create<UiState>()((set) => ({
   fontFamily: DEFAULT_FONT_FAMILY,
   bgm: DEFAULT_BGM,
   bgmVolume: DEFAULT_BGM_VOLUME,
+  reading: false,
   settingsOpen: false,
   prompt: null,
   setSidebarVisible: (sidebarVisible) => set({ sidebarVisible }),
@@ -50,6 +54,7 @@ export const useUiStore = create<UiState>()((set) => ({
   setFontFamily: (fontFamily) => set({ fontFamily }),
   setBgm: (bgm) => set({ bgm }),
   setBgmVolume: (bgmVolume) => set({ bgmVolume }),
+  setReading: (reading) => set({ reading }),
   setSettingsOpen: (settingsOpen) => set({ settingsOpen }),
   setPrompt: (prompt) => set({ prompt }),
 }))

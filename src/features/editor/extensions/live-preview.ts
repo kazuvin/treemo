@@ -8,6 +8,7 @@ import {
   type ViewUpdate,
   WidgetType,
 } from '@codemirror/view'
+import { allowWhileReading, isReading } from '@/lib/reading'
 import { toggleTask } from '../utils/list-ops'
 import { frontMatterField } from './front-matter'
 
@@ -59,7 +60,10 @@ class CheckboxWidget extends WidgetType {
       const line = view.state.doc.lineAt(this.pos)
       const next = toggleTask(line.text)
       if (next !== null) {
-        view.dispatch({ changes: { from: line.from, to: line.to, insert: next } })
+        view.dispatch({
+          changes: { from: line.from, to: line.to, insert: next },
+          annotations: allowWhileReading.of(true),
+        })
       }
     })
     return box
@@ -88,6 +92,9 @@ const hide = Decoration.replace({})
 
 function activeLines(state: EditorState): Set<number> {
   const lines = new Set<number>()
+  if (isReading(state)) {
+    return lines
+  }
   for (const range of state.selection.ranges) {
     const first = state.doc.lineAt(range.from).number
     const last = state.doc.lineAt(range.to).number
@@ -199,6 +206,7 @@ const plugin = ViewPlugin.fromClass(
         update.docChanged ||
         update.viewportChanged ||
         update.selectionSet ||
+        isReading(update.startState) !== isReading(update.state) ||
         syntaxTree(update.startState) !== syntaxTree(update.state)
       ) {
         this.decorations = build(update.view)

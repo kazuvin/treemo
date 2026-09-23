@@ -65,10 +65,11 @@ export function TreeBlockView({
       data-diagram-active={status === 'diagram'}
       className={cn(
         'my-2 rounded-card border px-4 py-3',
-        status === 'idle' && 'border-border-hairline',
+        // 枠はブロックに乗っているときと DIAGRAM モードのときだけ見せる。場所は常に取っておき、
+        // 枠が出入りしても本文が動かないようにする
         status === 'selected' && 'border-border-strong',
         status === 'diagram' && 'border-selected-border',
-        status === 'fullscreen' && 'border-border-hairline',
+        (status === 'idle' || status === 'fullscreen') && 'border-transparent',
       )}
       onMouseDown={(event) => {
         if (event.target === event.currentTarget) {

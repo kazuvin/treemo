@@ -1,5 +1,6 @@
 import { EditorState, type Extension, type Range, StateField } from '@codemirror/state'
 import { Decoration, type DecorationSet, EditorView, ViewPlugin } from '@codemirror/view'
+import { isReading, readingChanged } from '@/lib/reading'
 import { useModeStore } from '@/stores/mode-store'
 import { useDiagramStore } from '../stores/diagram-store'
 import { collapsedIds } from '../utils/ops'
@@ -23,7 +24,8 @@ function buildDecorations(state: EditorState): DecorationSet {
   const search = state.field(searchHighlightField)
   const ranges: Range<Decoration>[] = []
   for (const block of state.field(blocksField)) {
-    if (block.from === ui.source) {
+    // 閲覧モードではソース表示にしていたブロックも絵で見せる
+    if (block.from === ui.source && !isReading(state)) {
       continue
     }
     const active = ui.active?.from === block.from ? ui.active : null
@@ -57,6 +59,7 @@ const decorationsField = StateField.define<DecorationSet>({
     if (
       tr.docChanged ||
       tr.selection ||
+      readingChanged(tr) ||
       tr.startState.field(treeUiField) !== tr.state.field(treeUiField) ||
       tr.startState.field(searchHighlightField) !== tr.state.field(searchHighlightField)
     ) {
@@ -101,6 +104,7 @@ const publisher = ViewPlugin.define((view) => {
       if (
         update.docChanged ||
         update.selectionSet ||
+        update.transactions.some(readingChanged) ||
         update.startState.field(treeUiField) !== update.state.field(treeUiField)
       ) {
         publish(update.state)

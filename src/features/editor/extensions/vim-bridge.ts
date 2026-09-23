@@ -10,6 +10,7 @@ import { setSearchQuery } from '@codemirror/search'
 import { type Extension } from '@codemirror/state'
 import { EditorView, ViewPlugin } from '@codemirror/view'
 import { getCM, Vim, vim } from '@replit/codemirror-vim'
+import { isReading } from '@/lib/reading'
 import type { VimMode } from '@/stores/mode-store'
 import { DEFAULT_VIM_CONFIG, type VimConfig } from '../utils/vim-config'
 
@@ -202,7 +203,14 @@ export function vimBridge(onModeChange: (mode: VimMode) => void): Extension {
   }
   const listener = ViewPlugin.define((view) => {
     const cm = getCM(view)
-    const handler = (event: { mode: string }) => onModeChange(toVimMode(event.mode))
+    const handler = (event: { mode: string }) => {
+      // 閲覧モードでは書けないので、INSERT に入ったらすぐ NORMAL に戻す
+      if (cm && event.mode !== 'normal' && event.mode !== 'visual' && isReading(view.state)) {
+        queueMicrotask(() => Vim.handleKey(cm, '<Esc>', 'user'))
+        return
+      }
+      onModeChange(toVimMode(event.mode))
+    }
     cm?.on('vim-mode-change', handler)
     onModeChange('NORMAL')
     return {

@@ -20,6 +20,7 @@ const schema = z.object({
   lastNote: z.record(z.string(), z.string()).default({}),
   sidebarVisible: z.boolean().default(true),
   sidebarSide: z.enum(['left', 'right']).catch('left'),
+  reading: z.boolean().catch(false),
   // 選べない値は font-size.ts の sanitizeFontSize が近いものに寄せる
   fontSize: z.number().catch(DEFAULT_FONT_SIZE),
   // 知らない書体は font-family.ts の sanitizeFontFamily が既定にする

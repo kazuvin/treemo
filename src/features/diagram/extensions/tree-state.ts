@@ -1,5 +1,6 @@
 import { type SearchQuery, setSearchQuery } from '@codemirror/search'
 import { Annotation, type EditorState, StateEffect, StateField } from '@codemirror/state'
+import { isReading } from '@/lib/reading'
 import type { TreeBlock, TreeNode } from '../types/tree'
 import { type BlockRange, findTreeBlocks } from '../utils/find-blocks'
 import { applyCollapsed, clampPath } from '../utils/ops'
@@ -240,7 +241,11 @@ function nodeAtLine(nodes: readonly TreeNode[], line: number): TreeNode | null {
 }
 
 /** カーソルが乗っているブロック。ソース表示のブロックは含めない */
+/** 閲覧モードではブロックに乗らない（選択状態も DIAGRAM モードも無い） */
 export function blockAtCursor(state: EditorState): ParsedBlock | null {
+  if (isReading(state)) {
+    return null
+  }
   const ui = state.field(treeUiField)
   const block = blockAt(state.field(blocksField), state.selection.main.head)
   return block && block.from !== ui.source ? block : null

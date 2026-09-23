@@ -6,6 +6,7 @@ import { isolateHistory, redo, undo } from '@codemirror/commands'
 import type { EditorState, TransactionSpec } from '@codemirror/state'
 import type { EditorView } from '@codemirror/view'
 import { getCM, Vim } from '@replit/codemirror-vim'
+import { isReading } from '@/lib/reading'
 import { useStatusStore } from '@/stores/status-store'
 import { useDiagramStore } from '../stores/diagram-store'
 import type { TreeNode } from '../types/tree'
@@ -107,6 +108,9 @@ export function isOnTreeBlock(state: EditorState): boolean {
 }
 
 export function enterDiagram(view: EditorView, from?: number, path?: number[]): boolean {
+  if (isReading(view.state)) {
+    return false
+  }
   const blocks = view.state.field(blocksField)
   const block = from === undefined ? blockAtCursor(view.state) : blocks.find((b) => b.from === from)
   if (!block) {
@@ -197,6 +201,9 @@ export function exitDiagram(view: EditorView): void {
 }
 
 export function selectBlock(view: EditorView, from: number): void {
+  if (isReading(view.state)) {
+    return
+  }
   view.dispatch({ selection: { anchor: from } })
   view.focus()
 }
@@ -266,6 +273,9 @@ export function openLineAroundBlock(view: EditorView, where: 'above' | 'below'):
 
 /** カーソルの行に空のツリーブロックを差し込み、最初のノードを書き始める（F-TREE-7） */
 export function insertEmptyBlock(view: EditorView): void {
+  if (isReading(view.state)) {
+    return
+  }
   const line = view.state.doc.lineAt(view.state.selection.main.head)
   const empty = line.text.trim() === ''
   const from = empty ? line.from : line.to + 1
@@ -559,7 +569,7 @@ export function restoreTreeFolds(view: EditorView, folds: Readonly<Record<string
 
 /** カーソルの次（前）の行から始まる（で終わる）ブロック */
 export function adjacentBlock(state: EditorState, direction: 'up' | 'down'): ParsedBlock | null {
-  if (blockAtCursor(state)) {
+  if (isReading(state) || blockAtCursor(state)) {
     return null
   }
   const line = state.doc.lineAt(state.selection.main.head)
