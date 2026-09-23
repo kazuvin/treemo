@@ -19,6 +19,7 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             vault::commands::vault_open,
             vault::commands::vault_list,
+            vault::commands::vault_front_matters,
             vault::commands::vault_default_dir,
             vault::commands::note_read,
             vault::commands::note_write,

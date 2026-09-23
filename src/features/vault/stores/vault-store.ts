@@ -2,6 +2,7 @@ import { create } from 'zustand'
 import type { VaultEntry, VaultInfo } from '../api/vault'
 import { expandAncestors, visibleRows } from '../utils/file-tree'
 import type { SessionSnapshot } from '../utils/note-session'
+import type { TagEntry } from '../utils/tag-index'
 
 interface VaultState {
   vault: VaultInfo | null
@@ -15,12 +16,18 @@ interface VaultState {
   /** 保管庫を開けなかった理由。選び直す画面に出す */
   openError: string | null
   switcherOpen: boolean
+  /** タグ検索。閉じていれば null。tag を選んでいればそのタグのメモを並べる */
+  tagSearch: { tag: string | null } | null
+  /** タグの一覧。読み込んでいる間は null */
+  tags: TagEntry[] | null
   setVault: (vault: VaultInfo | null) => void
   setEntries: (entries: VaultEntry[]) => void
   setOpenPath: (openPath: string | null) => void
   setSession: (session: SessionSnapshot) => void
   setOpenError: (openError: string | null) => void
   setSwitcherOpen: (switcherOpen: boolean) => void
+  setTagSearch: (tagSearch: { tag: string | null } | null) => void
+  setTags: (tags: TagEntry[] | null) => void
   toggleDir: (path: string, open?: boolean) => void
   setCursor: (cursor: string | null) => void
   moveCursor: (delta: number) => void
@@ -38,6 +45,8 @@ export const useVaultStore = create<VaultState>()((set, get) => ({
   session: initialSession,
   openError: null,
   switcherOpen: false,
+  tagSearch: null,
+  tags: null,
   setVault: (vault) =>
     set({ vault, entries: [], expanded: new Set(), cursor: null, openPath: null }),
   setEntries: (entries) => set({ entries }),
@@ -45,6 +54,8 @@ export const useVaultStore = create<VaultState>()((set, get) => ({
   setSession: (session) => set({ session }),
   setOpenError: (openError) => set({ openError }),
   setSwitcherOpen: (switcherOpen) => set({ switcherOpen }),
+  setTagSearch: (tagSearch) => set({ tagSearch }),
+  setTags: (tags) => set({ tags }),
   toggleDir: (path, open) => {
     const expanded = new Set(get().expanded)
     const next = open ?? !expanded.has(path)

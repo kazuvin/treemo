@@ -96,3 +96,11 @@ MVP までの実装の順番。1 つのタスクが 1 回の作業セッショ�
 - [ ] **6-4 自分用のビルド。** `pnpm build` で `.app` を作り、普段使いに移る。
   - `pnpm tauri build --bundles app` で `Treemo.app` が作れることは確かめた。普段使いに移るのは
     まだ（実機での起動時間の計測もここで行う）。
+
+## M7 プロパティとタグ
+
+MVP の外で足したもの。読む: [要件定義](requirements.md) の F-EDIT-5・F-VAULT-8、
+[保管庫と iCloud](vault.md) の「フロントマターを集める」
+
+- [x] **7-1 フロントマターの表。** F-EDIT-5。`features/editor/extensions/front-matter.ts`。
+- [x] **7-2 タグ検索。** F-VAULT-8。Rust の `vault_front_matters` とタグの一覧。

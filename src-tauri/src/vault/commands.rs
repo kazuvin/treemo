@@ -3,7 +3,7 @@ use std::path::PathBuf;
 use serde::Serialize;
 use tauri::{AppHandle, Emitter, State};
 
-use super::fs::{self, Entry, NoteContent};
+use super::fs::{self, Entry, FrontMatter, NoteContent};
 use super::{OpenVault, VaultError, VaultState, watch};
 
 pub const CHANGED_EVENT: &str = "vault://changed";
@@ -55,6 +55,14 @@ pub async fn vault_open(
 #[tauri::command]
 pub async fn vault_list(state: State<'_, VaultState>) -> Result<Vec<Entry>, VaultError> {
     fs::list(&state.root()?)
+}
+
+/// タグ検索のために、全メモのフロントマターを集める
+#[tauri::command]
+pub async fn vault_front_matters(
+    state: State<'_, VaultState>,
+) -> Result<Vec<FrontMatter>, VaultError> {
+    fs::front_matters(&state.root()?)
 }
 
 /// 保管庫を選ぶダイアログの最初の候補。iCloud Drive があればそこ

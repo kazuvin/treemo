@@ -11,6 +11,7 @@ import { useKeyDispatcher } from '@/features/commands/hooks/use-key-dispatcher'
 import { useCommandStore } from '@/features/commands/stores/command-store'
 import { keyLabel } from '@/features/commands/utils/key-label'
 import { Editor, type EditorHandle } from '@/features/editor/components/editor'
+import { tagClickHandler } from '@/features/editor/extensions/front-matter'
 import { setExHandlers } from '@/features/editor/extensions/vim-bridge'
 import { TreeFullscreen } from '@/features/tree/components/tree-fullscreen'
 import { treeExtension } from '@/features/tree/extensions/tree-extension'
@@ -19,6 +20,7 @@ import { onVaultChanged } from '@/features/vault/api/vault'
 import { FileTree } from '@/features/vault/components/file-tree'
 import { QuickSwitcher } from '@/features/vault/components/quick-switcher'
 import { SessionBanner } from '@/features/vault/components/session-banner'
+import { TagSearch } from '@/features/vault/components/tag-search'
 import { VaultPicker } from '@/features/vault/components/vault-picker'
 import { useVaultStore } from '@/features/vault/stores/vault-store'
 import { toNotePath } from '@/features/vault/utils/file-tree'
@@ -26,7 +28,13 @@ import { cn } from '@/lib/cn'
 import { applyTheme, resolveTheme, sanitizeCustomThemes } from '@/lib/theme'
 import { useModeStore } from '@/stores/mode-store'
 import { useThemeStore } from '@/stores/theme-store'
-import { loadKeybindings, openSettings, pickVault, registerDefaultCommands } from './commands'
+import {
+  loadKeybindings,
+  openSettings,
+  openTagSearch,
+  pickVault,
+  registerDefaultCommands,
+} from './commands'
 import { focusEditor, restoreFocus, trackFocus } from './focus'
 import { clearStatusMessage, getContext, getScopes, replayKeys, swallowKey } from './keys'
 import { notes } from './note-controller'
@@ -35,7 +43,11 @@ import { SettingsScreen } from './settings-screen'
 import { type SidebarSide, useUiStore } from './ui-store'
 
 /** Editor に渡す拡張。作り直すとエディタごと作り直しになるので、ここで 1 度だけ作る */
-const editorExtensions = [treeExtension(), notes.extension]
+const editorExtensions = [
+  treeExtension(),
+  notes.extension,
+  tagClickHandler.of((tag) => void openTagSearch(tag)),
+]
 
 let editorView: EditorHandle['view'] | null = null
 const viewListeners = new Set<() => void>()
@@ -287,6 +299,13 @@ export function App() {
         onCreate={(path) => void notes.createNote(path)}
         onClose={() => {
           useVaultStore.getState().setSwitcherOpen(false)
+          restoreFocus()
+        }}
+      />
+      <TagSearch
+        onOpen={(path) => void notes.openNote(path)}
+        onClose={() => {
+          useVaultStore.getState().setTagSearch(null)
           restoreFocus()
         }}
       />

@@ -9,6 +9,7 @@ import {
   WidgetType,
 } from '@codemirror/view'
 import { toggleTask } from '../utils/list-ops'
+import { frontMatterField } from './front-matter'
 
 /** 記号を隠すだけで中身は残す。カーソル行では付けない */
 const HIDDEN_MARKS = new Set(['EmphasisMark', 'StrikethroughMark', 'LinkMark', 'QuoteMark'])
@@ -102,15 +103,23 @@ function build(view: EditorView): DecorationSet {
   const active = activeLines(state)
   const decorations: Range<Decoration>[] = []
   const isActive = (pos: number) => active.has(state.doc.lineAt(pos).number)
+  // フロントマターの --- と中身は、Markdown としては水平線や見出しに読まれてしまう
+  const bodyFrom = (state.field(frontMatterField, false)?.to ?? -1) + 1
   const lineClass = (pos: number, className: string) => {
     decorations.push(Decoration.line({ class: className }).range(state.doc.lineAt(pos).from))
   }
 
   for (const { from, to } of view.visibleRanges) {
+    if (to < bodyFrom) {
+      continue
+    }
     syntaxTree(state).iterate({
-      from,
+      from: Math.max(from, bodyFrom),
       to,
       enter: (node) => {
+        if (node.from < bodyFrom) {
+          return
+        }
         const name = node.name
         const heading = /^ATXHeading(\d)$/.exec(name)
         if (heading) {

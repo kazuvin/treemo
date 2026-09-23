@@ -9,9 +9,10 @@ import {
 import { editorCommands } from '@/features/editor/commands'
 import { treeCommands } from '@/features/tree/commands'
 import { useTreeStore } from '@/features/tree/stores/tree-store'
-import { vaultDefaultDir } from '@/features/vault/api/vault'
+import { vaultDefaultDir, vaultFrontMatters } from '@/features/vault/api/vault'
 import { useVaultStore } from '@/features/vault/stores/vault-store'
 import { displayName, parentDir, toNotePath, visibleRows } from '@/features/vault/utils/file-tree'
+import { buildTagIndex } from '@/features/vault/utils/tag-index'
 import type { Command, CommandContext } from '@/lib/command'
 import { THEMES } from '@/lib/theme'
 import { useModeStore } from '@/stores/mode-store'
@@ -117,6 +118,27 @@ function openSwitcher(): void {
   useVaultStore.getState().setSwitcherOpen(true)
 }
 
+/**
+ * タグ検索を開く。tag を渡せば、そのタグのメモの一覧から始める。開くたびに全メモの
+ * フロントマターを読み直す（開いているメモは先に書いておく）
+ */
+export async function openTagSearch(tag: string | null = null): Promise<void> {
+  const vault = useVaultStore.getState()
+  if (!vault.tagSearch) {
+    rememberFocus()
+  }
+  vault.setTags(null)
+  vault.setTagSearch({ tag })
+  try {
+    await notes.flush()
+    vault.setTags(buildTagIndex(await vaultFrontMatters()))
+  } catch (error) {
+    console.error('タグを読めませんでした', error)
+    useStatusStore.getState().show('タグを読めませんでした')
+    vault.setTagSearch(null)
+  }
+}
+
 function sidebarCommand(id: string, title: string, sequences: string[], run: () => void): Command {
   return {
     id,
@@ -217,6 +239,13 @@ const appCommands: Command[] = [
     ],
     when: hasVault,
     run: openSwitcher,
+  },
+  {
+    id: 'vault.tagSearch',
+    title: 'タグで探す',
+    keys: [{ scope: 'normal', sequence: '<Space>ft' }],
+    when: hasVault,
+    run: () => void openTagSearch(),
   },
   {
     id: 'vault.newNote',

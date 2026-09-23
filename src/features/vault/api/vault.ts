@@ -58,6 +58,14 @@ export function vaultList(): Promise<VaultEntry[]> {
   return call('vault_list', {}, z.array(entrySchema))
 }
 
+const frontMatterSchema = z.object({ path: z.string(), text: z.string() })
+export type FrontMatterEntry = z.infer<typeof frontMatterSchema>
+
+/** フロントマターのあるメモの、フロントマター（`---` の間）だけ */
+export function vaultFrontMatters(): Promise<FrontMatterEntry[]> {
+  return call('vault_front_matters', {}, z.array(frontMatterSchema))
+}
+
 export function vaultDefaultDir(): Promise<string | null> {
   return call('vault_default_dir', {}, z.string().nullable())
 }

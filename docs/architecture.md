@@ -87,6 +87,7 @@ Treemo をどう組み立てるか。何を作るかは [要件定義](requireme
 | ステータスバーの短い知らせ | `src/stores/status-store.ts` | 次のキーで消える。消えては困る知らせ（衝突・保存の失敗）はここに出さない |
 | アプリの状態の保存（最後の保管庫、折りたたみなど） | `src/app/persisted-state.ts` → Rust の `app_state_read` / `app_state_write` | 保管庫の外（Application Support）に JSON で置く |
 | 開いている保管庫、ファイル一覧、開いているメモのパス | `features/vault/stores/` | vault の中で閉じる |
+| タグ検索を開いているか・選んでいるタグ、タグの一覧 | `features/vault/stores/vault-store.ts` | タグの一覧は開くたびに `vault_front_matters` から作り直す（`src/app/commands.ts` の `openTagSearch`）。フロントマターの読み方は `src/lib/front-matter.ts` にあり、エディタの表と共有する |
 | コマンドの登録、キーの割り当て | `features/commands/` | 下の「コマンド」 |
 | キーの割り当ての上書き | Application Support の `keybindings.json` → Rust の `keybindings_read` / `keybindings_write`。`src/app/commands.ts` が既定の登録に重ねる | 手で書いても設定画面から書いてもよい。アプリが書くのは既定との差分だけ（[キー操作](keybindings.md) の「割り当てを変える」） |
 | サイドバーの位置（左右）、設定画面を開いているか | `src/app/ui-store.ts`（位置はアプリの状態として保存） | レイアウトと、向きで指すキー（`<C-w>h` など）の行き先を決める |
@@ -155,6 +156,7 @@ const editorExtensions = [treeExtension(), notes.extension]
 | Vim | `@replit/codemirror-vim` | CodeMirror 6 で唯一まとまった Vim。`defineEx` `defineAction` で `:w` `:e` `za` を足す |
 | コマンドパレット、クイックスイッチャー | `cmdk` | キーで選べるリストの振る舞い（上下・絞り込み・読み上げ）をそろえて持っている |
 | 状態 | `zustand` | React の外（CodeMirror の拡張、キーの振り分け）からも読み書きできる |
+| フロントマター | `yaml` | YAML 1.2 を正しく読める。読むだけに使い、書き戻しはしない（書式を保つため） |
 | 検証 | `zod` | Rust から来た値とアプリの状態の JSON を、型と一緒に確かめる |
 | Tauri | `@tauri-apps/api` `@tauri-apps/plugin-dialog` | IPC とイベント、保管庫を選ぶダイアログ |
 | Rust | `notify`（監視、macOS では FSEvents） `trash`（ゴミ箱） `thiserror` `serde` `blake3`（ハッシュ） `tauri-plugin-dialog` / 開発用に `tempfile` | |

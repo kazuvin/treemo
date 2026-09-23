@@ -1,6 +1,6 @@
 use std::collections::HashSet;
 use std::fs;
-use std::io::Write;
+use std::io::{BufRead, BufReader, Write};
 use std::path::{Component, Path, PathBuf};
 
 use serde::Serialize;
@@ -30,6 +30,17 @@ pub struct Entry {
     /// `<名前> <数字>.md` と `<名前>.md` が並んでいる。iCloud の衝突の疑い
     pub conflict: bool,
 }
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct FrontMatter {
+    pub path: String,
+    /// 開きと閉じの `---` の間の行
+    pub text: String,
+}
+
+/// 閉じの `---` を探す行数の上限。`src/lib/front-matter.ts` と同じ値にする
+const FRONT_MATTER_MAX_LINES: usize = 1000;
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -173,6 +184,52 @@ pub fn read(root: &Path, rel: &str) -> Result<NoteContent> {
     let hash = hash_bytes(&bytes);
     let content = String::from_utf8(bytes).map_err(|_| VaultError::NotUtf8(rel.to_owned()))?;
     Ok(NoteContent { content, hash })
+}
+
+/// フロントマターのあるメモの、フロントマターだけを集める。中身が端末に無いメモは
+/// ダウンロードさせないよう読まない。読めないメモは飛ばす
+pub fn front_matters(root: &Path) -> Result<Vec<FrontMatter>> {
+    let mut out = Vec::new();
+    for entry in list(root)? {
+        if entry.kind != EntryKind::Note || entry.placeholder {
+            continue;
+        }
+        match read_front_matter(&root.join(&entry.path)) {
+            Ok(Some(text)) => out.push(FrontMatter {
+                path: entry.path,
+                text,
+            }),
+            Ok(None) => {}
+            Err(e) => log::warn!("failed to read front matter of {}: {e}", entry.path),
+        }
+    }
+    Ok(out)
+}
+
+fn is_fence(line: &str) -> bool {
+    line.trim_end_matches([' ', '\t', '\r', '\n']) == "---"
+}
+
+/// 先頭の `---` から閉じの `---` までを読む。メモの残りは読まない
+fn read_front_matter(path: &Path) -> std::io::Result<Option<String>> {
+    let mut reader = BufReader::new(fs::File::open(path)?);
+    let mut line = String::new();
+    reader.read_line(&mut line)?;
+    if !is_fence(line.trim_start_matches('\u{feff}')) {
+        return Ok(None);
+    }
+    let mut text = String::new();
+    for _ in 1..FRONT_MATTER_MAX_LINES {
+        line.clear();
+        if reader.read_line(&mut line)? == 0 {
+            return Ok(None);
+        }
+        if is_fence(&line) {
+            return Ok(Some(text.trim_end_matches(['\r', '\n']).to_owned()));
+        }
+        text.push_str(&line);
+    }
+    Ok(None)
 }
 
 /// 中身の無い iCloud のファイルなら、ダウンロードを頼んで届くまで待つ
@@ -448,6 +505,46 @@ mod tests {
         let note = read(dir.path(), "a.md").unwrap();
         assert_eq!(note.content, "hello");
         assert_eq!(note.hash, hash_bytes(b"hello"));
+    }
+
+    #[test]
+    fn front_matters_reads_only_the_leading_block() {
+        let dir = vault();
+        fs::create_dir_all(dir.path().join("sub")).unwrap();
+        fs::write(dir.path().join("a.md"), "---\ntags: [x]\n---\n本文\n---\n").unwrap();
+        fs::write(
+            dir.path().join("sub/b.md"),
+            "\u{feff}---\r\ntitle: b\r\n---\r\n",
+        )
+        .unwrap();
+        fs::write(dir.path().join("c.md"), "本文\n---\na: 1\n---\n").unwrap();
+        fs::write(dir.path().join("d.md"), "---\na: 1\n").unwrap();
+        fs::write(dir.path().join("e.md"), "---\n---\n").unwrap();
+        fs::write(dir.path().join(".f.md.icloud"), "").unwrap();
+        assert_eq!(
+            front_matters(dir.path()).unwrap(),
+            vec![
+                FrontMatter {
+                    path: "a.md".to_owned(),
+                    text: "tags: [x]".to_owned(),
+                },
+                FrontMatter {
+                    path: "e.md".to_owned(),
+                    text: String::new(),
+                },
+                FrontMatter {
+                    path: "sub/b.md".to_owned(),
+                    text: "title: b".to_owned(),
+                },
+            ]
+        );
+    }
+
+    #[test]
+    fn front_matters_skips_files_that_are_not_utf8() {
+        let dir = vault();
+        fs::write(dir.path().join("a.md"), b"---\n\xff\n---\n").unwrap();
+        assert_eq!(front_matters(dir.path()).unwrap(), vec![]);
     }
 
     #[test]
