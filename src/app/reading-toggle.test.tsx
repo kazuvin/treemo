@@ -35,7 +35,7 @@ describe('ReadingToggle', () => {
 
   it('切り替えるとどちらにしたかを下に出し、しばらくして消す', () => {
     act(() => useUiStore.getState().setReading(true))
-    expect(notice()).toBe('閲覧モード · 書き換えできません（⌘E で戻す）')
+    expect(notice()).toBe('閲覧モード')
     act(() => {
       vi.advanceTimersByTime(1600)
     })

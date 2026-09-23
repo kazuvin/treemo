@@ -98,7 +98,7 @@ export function ReadingToggle({ keyLabel }: { keyLabel: string | null }) {
   const shown = useHeld(notice)
 
   return (
-    <div className="absolute top-2 right-3 z-10 flex flex-col items-end">
+    <div className="absolute top-2 right-3 z-10">
       <div
         role="group"
         aria-label="表示"
@@ -121,7 +121,8 @@ export function ReadingToggle({ keyLabel }: { keyLabel: string | null }) {
           <BookIcon />
         </Segment>
       </div>
-      <p aria-live="polite" className="mt-1 h-5">
+      {/* スイッチの幅に左右中央でそろえる。スイッチより広くても、スイッチの位置は動かさない */}
+      <p aria-live="polite" className="absolute top-full left-1/2 mt-1 -translate-x-1/2">
         {presence.mounted && shown && (
           <span
             key={shown.id}
@@ -132,9 +133,7 @@ export function ReadingToggle({ keyLabel }: { keyLabel: string | null }) {
                 : 'motion-safe:animate-fade-in-fast',
             )}
           >
-            {shown.reading
-              ? `閲覧モード · 書き換えできません${keyLabel ? `（${keyLabel} で戻す）` : ''}`
-              : '編集モード'}
+            {shown.reading ? '閲覧モード' : '編集モード'}
           </span>
         )}
       </p>
