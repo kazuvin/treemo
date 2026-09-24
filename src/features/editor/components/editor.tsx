@@ -6,6 +6,7 @@ import { baseExtensions } from '../extensions/base'
 import { bodyStart, frontMatter } from '../extensions/front-matter'
 import { livePreview } from '../extensions/live-preview'
 import { noteTitle } from '../extensions/note-title'
+import { markdownTable } from '../extensions/table'
 import { vimBridge } from '../extensions/vim-bridge'
 
 export interface EditorHandle {
@@ -38,6 +39,7 @@ export function Editor({ extensions, onReady }: EditorProps) {
       ...baseExtensions(),
       frontMatter(),
       livePreview(),
+      markdownTable(),
       ...extensions,
     ]
     const create = (doc: string, title: string | null) =>

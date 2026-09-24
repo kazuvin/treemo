@@ -15,7 +15,7 @@ import { frontMatterField } from './front-matter'
 /** 記号を隠すだけで中身は残す。カーソル行では付けない */
 const HIDDEN_MARKS = new Set(['EmphasisMark', 'StrikethroughMark', 'LinkMark', 'QuoteMark'])
 
-const INLINE_CLASSES: Record<string, string> = {
+export const INLINE_CLASSES: Record<string, string> = {
   Emphasis: 'cm-lp-em',
   StrongEmphasis: 'cm-lp-strong',
   InlineCode: 'cm-lp-code',
