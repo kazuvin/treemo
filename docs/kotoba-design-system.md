@@ -390,6 +390,8 @@ kazuvin.me（Next.js）に取り込んだものを、トークン層と文書ご
   （`features/commands/components/command-palette.tsx`）。
 - **選択状態は枠線とティントの 2 つで示す。** サイドバーの行とツリーのノードは、選んでいるものに
   アクセントの枠線（行は左端の線）とティントを付ける。`✓` はチェックボックスだけに使う。
+  ただし DIAGRAM (NORMAL) / (INSERT) で選んでいるノード（ツリーのカーソル）の枠線は、本文の
+  Vim のカーソルと同じ `gray-900` にする。カーソルが乗っているツリーブロックの枠も同じ色にする。
 - **フォントは Fontsource をそのまま読む。** kazuvin.me は欧文を `next/font` で配信していたが、
   ここは Vite なので `src/main.tsx` で `@fontsource-variable/*` を読み、`globals.css` の
   `--font-sans` / `--font-mono` は書体名を直接指す。

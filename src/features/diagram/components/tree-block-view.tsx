@@ -68,7 +68,7 @@ export function TreeBlockView({
         'my-2 rounded-card border px-4 py-3',
         // 枠はブロックに乗っているときと DIAGRAM モードのときだけ見せる。場所は常に取っておき、
         // 枠が出入りしても本文が動かないようにする
-        status === 'selected' && 'border-border-strong',
+        status === 'selected' && 'border-gray-900',
         status === 'diagram' && 'border-selected-border',
         (status === 'idle' || status === 'fullscreen') && 'border-transparent',
       )}
