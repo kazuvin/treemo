@@ -4,17 +4,22 @@ import type { Editing } from '../extensions/tree-state'
 import { useTweenedRects } from '../hooks/use-tweened-rects'
 import { useDiagramStore } from '../stores/diagram-store'
 import type { TreeNode } from '../types/tree'
-import { edgePath, layoutTree, type Size } from '../utils/layout'
+import type { TreeDirection } from '../utils/direction'
+import { edgePath, layoutTree, type Rect, type Size } from '../utils/layout'
 import { getNode } from '../utils/ops'
 import { fitZoom, type Zoom } from '../utils/zoom'
 import { InlineContent } from './inline-content'
 import { type CommitNext, NodeEditor } from './node-editor'
 
 /**
- * 列のあいだは辺の折れ目と「子を足す」の印、兄弟のあいだは「兄弟を足す」の印が入る幅。
- * 印はこの隙間に重ねて出すので、出し入れしてもノードは動かない
+ * 深さの段のあいだは辺の折れ目と「子を足す」の印、兄弟のあいだは「兄弟を足す」の印が入る幅。
+ * 印はこの隙間に重ねて出すので、出し入れしてもノードは動かない。縦向きでは「兄弟を足す」の印が
+ * 兄弟の横に並ぶので、兄弟のあいだを印の幅（`+Enter`）ぶん広げる
  */
-const LAYOUT = { columnGap: 48, siblingGap: 24 }
+const LAYOUTS = {
+  lr: { columnGap: 48, siblingGap: 24 },
+  tb: { columnGap: 48, siblingGap: 56 },
+} as const
 /** 印の高さ（text-2xs の行 16px + 枠）。兄弟のあいだの縦の中央に置く */
 const SIGNIFIER_HEIGHT = 18
 const SIGNIFIER_GAP = 4
@@ -60,6 +65,7 @@ interface TreeCanvasProps {
   zoom?: Zoom
   /** 'fit' のとき、親の箱のどちらの向きに収めるか */
   fitAxes?: 'width' | 'both'
+  direction?: TreeDirection
   onSelectNode: (path: number[]) => void
   onEditNode: (path: number[]) => void
   onAddNode: (path: number[], where: 'child' | 'sibling') => void
@@ -79,6 +85,7 @@ export function TreeCanvas({
   showGuide,
   zoom = 1,
   fitAxes = 'width',
+  direction = 'lr',
   onSelectNode,
   onEditNode,
   onAddNode,
@@ -106,9 +113,13 @@ export function TreeCanvas({
     }
   }
 
-  const layout = layoutTree(roots, (node) => sizes.get(sizeKey(node)) ?? estimate(node), LAYOUT)
+  const gaps = LAYOUTS[direction]
+  const layout = layoutTree(roots, (node) => sizes.get(sizeKey(node)) ?? estimate(node), {
+    ...gaps,
+    direction,
+  })
   const nodes = visibleNodes(roots)
-  const tweened = useTweenedRects(nodes, layout.rects)
+  const tweened = useTweenedRects(nodes, layout.rects, direction)
   const selectedRect = selectedId ? tweened.rect(selectedId) : undefined
   // DIAGRAM (INSERT) では Enter が下の兄弟、Tab が子（docs/keybindings.md の「ノード編集」）
   const siblingKey = editing ? 'Enter' : 'o'
@@ -181,9 +192,10 @@ export function TreeCanvas({
     return () => observer.disconnect()
   }, [fitting])
 
-  // 右端の列の「子を足す」と、最後のノードの「兄弟を足す」の印の場所を常に空けておく
-  const width = layout.width + LAYOUT.columnGap
-  const height = layout.height + LAYOUT.siblingGap
+  // 最後の段の「子を足す」と、最後のノードの「兄弟を足す」の印の場所を常に空けておく
+  const width = layout.width + (direction === 'lr' ? gaps.columnGap : gaps.siblingGap)
+  const height = layout.height + (direction === 'lr' ? gaps.siblingGap : gaps.columnGap)
+  const signifiers = selectedRect ? placeSignifiers(selectedRect, direction) : null
   const scale = fitting
     ? fitZoom({ width, height }, room ?? { width: 0, height: 0 }, fitAxes)
     : zoom
@@ -229,7 +241,7 @@ export function TreeCanvas({
             return (
               <path
                 key={`${edge.from}>${edge.to}`}
-                d={edgePath(parent, child)}
+                d={edgePath(parent, child, direction)}
                 fill="none"
                 stroke="var(--color-border-strong)"
                 strokeWidth={1}
@@ -259,29 +271,26 @@ export function TreeCanvas({
             onHasTextChange={setEditingHasText}
           />
         ))}
-        {showGuide && selectedId && selectedRect && selectedNode && (
+        {showGuide && selectedId && signifiers && selectedNode && (
           <>
             {selectedNode.children.length === 0 && (
               <Signifier
                 key={`child:${selectedId}:${guideHidden}`}
-                direction="right"
+                direction={direction === 'lr' ? 'right' : 'down'}
                 hidden={guideHidden}
                 keys="Tab"
                 title="子ノードを足す（Tab）"
-                x={selectedRect.x + selectedRect.width + SIGNIFIER_GAP}
-                y={selectedRect.y + (selectedRect.height - SIGNIFIER_HEIGHT) / 2}
+                {...signifiers.child}
                 onAdd={editing ? null : () => onAddNode(toPath(selectedId), 'child')}
               />
             )}
             <Signifier
               key={`sibling:${selectedId}:${siblingKey}:${guideHidden}`}
-              direction="down"
+              direction={direction === 'lr' ? 'down' : 'right'}
               hidden={guideHidden}
               keys={siblingKey}
-              title={`下に兄弟ノードを足す（${siblingKey}）`}
-              x={selectedRect.x}
-              y={selectedRect.y + selectedRect.height + (LAYOUT.siblingGap - SIGNIFIER_HEIGHT) / 2}
-              centerIn={selectedRect.width}
+              title={`${direction === 'lr' ? '下' : '右'}に兄弟ノードを足す（${siblingKey}）`}
+              {...signifiers.sibling}
               onAdd={editing ? null : () => onAddNode(toPath(selectedId), 'sibling')}
             />
           </>
@@ -289,6 +298,34 @@ export function TreeCanvas({
       </div>
     </div>
   )
+}
+
+interface SignifierPlace {
+  x: number
+  y: number
+  centerIn?: number
+}
+
+/**
+ * 印の場所。子の印は深さの段のあいだ、兄弟の印は兄弟のあいだに置き、ノードの辺の中央にそろえる
+ */
+function placeSignifiers(
+  rect: Rect,
+  direction: TreeDirection,
+): { child: SignifierPlace; sibling: SignifierPlace } {
+  const gaps = LAYOUTS[direction]
+  const right = {
+    x: rect.x + rect.width + SIGNIFIER_GAP,
+    y: rect.y + (rect.height - SIGNIFIER_HEIGHT) / 2,
+  }
+  const below = (gap: number) => ({
+    x: rect.x,
+    y: rect.y + rect.height + (gap - SIGNIFIER_HEIGHT) / 2,
+    centerIn: rect.width,
+  })
+  return direction === 'lr'
+    ? { child: right, sibling: below(gaps.siblingGap) }
+    : { child: below(gaps.columnGap), sibling: right }
 }
 
 interface SignifierProps {

@@ -4,6 +4,7 @@ import { createRoot, type Root } from 'react-dom/client'
 import { type BlockStatus, TreeBlockView } from '../components/tree-block-view'
 import { useDiagramStore } from '../stores/diagram-store'
 import type { StrayLine, TreeNode } from '../types/tree'
+import type { TreeDirection } from '../utils/direction'
 import { addNodeAt, commitEdit, editNode, selectBlock, selectNode } from './tree-actions'
 import type { Editing } from './tree-state'
 
@@ -19,6 +20,7 @@ export interface TreeWidgetProps {
   /** Vim が光らせている検索。無ければ null */
   search: RegExp | null
   editing: Editing | null
+  direction: TreeDirection
   /** 折りたたみが変わったら描き直すための鍵 */
   foldKey: string
 }
@@ -38,6 +40,7 @@ function GuideAwareView({ view, props }: { view: EditorView; props: TreeWidgetPr
       hitId={props.hitId}
       search={props.search}
       editing={props.editing}
+      direction={props.direction}
       showGuide={showGuide}
       zoom={zoom}
       onSelectBlock={() => selectBlock(view, props.from)}

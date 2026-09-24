@@ -37,6 +37,19 @@ describe('parseKeyOverrides', () => {
     })
   })
 
+  it('親子・兄弟の移動の ID を画面の向きの ID に読み替える', () => {
+    const result = parseKeyOverrides(
+      '{ "diagram.parent": [{ "scope": "diagram", "sequence": "b" }], "tree.next": [] }',
+    )
+    expect(result).toEqual({
+      ok: true,
+      overrides: {
+        'diagram.left': [{ scope: 'diagram', sequence: 'b' }],
+        'diagram.down': [],
+      },
+    })
+  })
+
   it('JSON として読めなければ理由を返す', () => {
     expect(parseKeyOverrides('{').ok).toBe(false)
   })

@@ -10,6 +10,7 @@ import { isReading } from '@/lib/reading'
 import { useStatusStore } from '@/stores/status-store'
 import { useDiagramStore } from '../stores/diagram-store'
 import type { TreeNode } from '../types/tree'
+import { directionOf, type ScreenDirection, treeMove, withDirection } from '../utils/direction'
 import {
   appendChild,
   collapsedIds,
@@ -84,14 +85,14 @@ function commitTree(
 
 function withTree(
   view: EditorView,
-  op: (roots: TreeNode[], path: number[] | null) => OpResult | null,
+  op: (roots: TreeNode[], path: number[] | null, block: ParsedBlock) => OpResult | null,
   patch: (result: OpResult) => Partial<ActiveTree> = (r) => ({ path: r.path }),
 ): boolean {
   const cur = current(view.state)
   if (!cur || cur.active.editing) {
     return false
   }
-  const result = op(cur.roots, cur.active.path)
+  const result = op(cur.roots, cur.active.path, cur.block)
   if (!result) {
     return false
   }
@@ -301,11 +302,13 @@ export function insertEmptyBlock(view: EditorView): void {
   view.focus()
 }
 
-export function moveSelection(view: EditorView, direction: 'parent' | 'child' | 'up' | 'down') {
+/** h / j / k / l。画面の向きで動く（横向きなら h / l が親と子、縦向きなら k / j が親と子） */
+export function moveSelection(view: EditorView, screen: ScreenDirection) {
   const cur = current(view.state)
   if (!cur || !cur.active.path) {
     return
   }
+  const direction = treeMove(directionOf(cur.block.block.info), screen)
   const path = cur.active.path
   const node = getNode(cur.roots, path)
   const key = path.join('.')
@@ -323,9 +326,9 @@ export function moveSelection(view: EditorView, direction: 'parent' | 'child' | 
         next = [...path, Math.min(lastChild[key] ?? 0, node.children.length - 1)]
       }
       break
-    case 'up':
-    case 'down':
-      next = sameDepthNeighbor(cur.roots, path, direction)
+    case 'prev':
+    case 'next':
+      next = sameDepthNeighbor(cur.roots, path, direction === 'prev' ? 'up' : 'down')
       break
     default:
       break
@@ -443,8 +446,35 @@ export function outdent(view: EditorView): void {
   withTree(view, (roots, path) => (path ? outdentNode(roots, path) : null))
 }
 
-export function swap(view: EditorView, direction: 'up' | 'down'): void {
-  withTree(view, (roots, path) => (path ? swapNode(roots, path, direction) : null))
+/**
+ * H / J / K / L。兄弟が並ぶ向き（横向きなら上下、縦向きなら左右）でだけ入れ替える。
+ * 親子の向きのキーは何もしない
+ */
+export function swap(view: EditorView, screen: ScreenDirection): void {
+  withTree(view, (roots, path, block) => {
+    const move = treeMove(directionOf(block.block.info), screen)
+    if (!path || (move !== 'prev' && move !== 'next')) {
+      return null
+    }
+    return swapNode(roots, path, move === 'prev' ? 'up' : 'down')
+  })
+}
+
+/** ツリーの向き（横 / 縦）を切り替える。開始フェンスの info 文字列の `layout=` だけを書き換える */
+export function toggleDirection(view: EditorView): boolean {
+  const block = activeBlock(view.state) ?? blockAtCursor(view.state)
+  if (!block || isReading(view.state) || view.state.field(treeUiField).active?.editing) {
+    return false
+  }
+  const { fence, info } = block.block
+  const next = withDirection(info, directionOf(info) === 'lr' ? 'tb' : 'lr')
+  const line = view.state.doc.lineAt(block.from)
+  view.dispatch({
+    changes: { from: line.from, to: line.to, insert: `${fence}tree${next}` },
+    annotations: isolateHistory.of('full'),
+    userEvent: 'diagram.edit',
+  })
+  return true
 }
 
 /** 本文の Vim と同じ入口で入れる。ヤンクならクリップボードにも写る（clipboard の設定） */

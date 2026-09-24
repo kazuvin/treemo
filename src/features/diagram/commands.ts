@@ -27,6 +27,7 @@ import {
   toggleFold,
   toggleFullscreen,
   searchInDiagram,
+  toggleDirection,
   toggleSource,
   undoInDiagram,
   yankSubtree,
@@ -123,18 +124,32 @@ export const diagramCommands: Command[] = [
   blockCommand('diagram.openAbove', 'ブロックの上に行を足す', 'O', (view) =>
     openLineAroundBlock(view, 'above'),
   ),
-  diagramCommand('diagram.parent', '親へ', ['h'], (view) => moveSelection(view, 'parent')),
-  diagramCommand('diagram.child', '子へ', ['l'], (view) => moveSelection(view, 'child')),
-  diagramCommand('diagram.next', '下の兄弟へ', ['j'], (view) => moveSelection(view, 'down')),
-  diagramCommand('diagram.prev', '上の兄弟へ', ['k'], (view) => moveSelection(view, 'up')),
+  diagramCommand('diagram.left', '左へ（横向きなら親、縦向きなら前の兄弟）', ['h'], (view) =>
+    moveSelection(view, 'left'),
+  ),
+  diagramCommand('diagram.right', '右へ（横向きなら子、縦向きなら次の兄弟）', ['l'], (view) =>
+    moveSelection(view, 'right'),
+  ),
+  diagramCommand('diagram.down', '下へ（横向きなら次の兄弟、縦向きなら子）', ['j'], (view) =>
+    moveSelection(view, 'down'),
+  ),
+  diagramCommand('diagram.up', '上へ（横向きなら前の兄弟、縦向きなら親）', ['k'], (view) =>
+    moveSelection(view, 'up'),
+  ),
   diagramCommand('diagram.first', '最初のルートへ', ['gg'], selectFirst),
   diagramCommand('diagram.lastLeaf', '最後に見えている葉へ', ['G'], selectLastLeaf),
   diagramCommand('diagram.center', '選んでいるノードを中央に', ['zz'], centerSelection),
-  diagramCommand('diagram.addBelow', '下に兄弟ノードを足す', ['o'], (view) =>
-    addSibling(view, 'below'),
+  diagramCommand(
+    'diagram.addBelow',
+    '次に兄弟ノードを足す（横向きなら下、縦向きなら右）',
+    ['o'],
+    (view) => addSibling(view, 'below'),
   ),
-  diagramCommand('diagram.addAbove', '上に兄弟ノードを足す', ['O'], (view) =>
-    addSibling(view, 'above'),
+  diagramCommand(
+    'diagram.addAbove',
+    '前に兄弟ノードを足す（横向きなら上、縦向きなら左）',
+    ['O'],
+    (view) => addSibling(view, 'above'),
   ),
   diagramCommand('diagram.addChild', '子ノードを足す', ['Tab'], addChild),
   diagramCommand('diagram.editStart', '中身の先頭から書く', ['i'], (view) =>
@@ -144,12 +159,26 @@ export const diagramCommands: Command[] = [
   diagramCommand('diagram.change', '中身を書き直す', ['c'], (view) => editNode(view, 'empty')),
   diagramCommand('diagram.indent', '字下げする（部分木ごと）', ['>'], indent),
   diagramCommand('diagram.outdent', '字上げする（部分木ごと）', ['<'], outdent),
-  diagramCommand('diagram.swapDown', '下の兄弟と入れ替える', ['J'], (view) => swap(view, 'down')),
-  diagramCommand('diagram.swapUp', '上の兄弟と入れ替える', ['K'], (view) => swap(view, 'up')),
+  diagramCommand('diagram.swapDown', '下の兄弟と入れ替える（横向き）', ['J'], (view) =>
+    swap(view, 'down'),
+  ),
+  diagramCommand('diagram.swapUp', '上の兄弟と入れ替える（横向き）', ['K'], (view) =>
+    swap(view, 'up'),
+  ),
+  diagramCommand('diagram.swapLeft', '左の兄弟と入れ替える（縦向き）', ['H'], (view) =>
+    swap(view, 'left'),
+  ),
+  diagramCommand('diagram.swapRight', '右の兄弟と入れ替える（縦向き）', ['L'], (view) =>
+    swap(view, 'right'),
+  ),
   diagramCommand('diagram.delete', '部分木を削除する', ['dd'], deleteSubtree),
   diagramCommand('diagram.yank', '部分木をコピーする', ['yy'], yankSubtree),
-  diagramCommand('diagram.pasteBelow', '下に貼り付ける', ['p'], (view) => paste(view, 'below')),
-  diagramCommand('diagram.pasteAbove', '上に貼り付ける', ['P'], (view) => paste(view, 'above')),
+  diagramCommand('diagram.pasteBelow', '次の兄弟として貼り付ける', ['p'], (view) =>
+    paste(view, 'below'),
+  ),
+  diagramCommand('diagram.pasteAbove', '前の兄弟として貼り付ける', ['P'], (view) =>
+    paste(view, 'above'),
+  ),
   diagramCommand('diagram.pasteChild', '最後の子として貼り付ける', [']p'], (view) =>
     paste(view, 'child'),
   ),
@@ -162,6 +191,20 @@ export const diagramCommands: Command[] = [
   zoomCommand('diagram.zoomOut', '図を縮小する', ['-'], (zoom) => stepZoom(zoom, -1)),
   zoomCommand('diagram.zoomReset', '図の倍率を 100% に戻す', ['0'], () => DEFAULT_ZOOM),
   zoomCommand('diagram.zoomFit', '図を画面の大きさに合わせる', ['='], () => 'fit'),
+  {
+    id: 'diagram.toggleDirection',
+    title: 'ツリーの向きを切り替える（横 / 縦）',
+    keys: [
+      { scope: 'diagram', sequence: 'gr' },
+      { scope: 'block', sequence: 'gr' },
+    ],
+    when: ({ view }) => view !== null && (isDiagramActive(view.state) || isOnTreeBlock(view.state)),
+    run: ({ view }) => {
+      if (view) {
+        toggleDirection(view)
+      }
+    },
+  },
   diagramCommand('diagram.fullscreen', 'インラインと全画面を切り替える', ['F'], toggleFullscreen),
   diagramCommand('diagram.exit', 'DIAGRAM モードを出る', ['Esc', 'q'], exitDiagram),
   diagramCommand('diagram.searchNext', '次の検索の当たりへ', ['n'], (view) =>

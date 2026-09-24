@@ -13,8 +13,8 @@ function overlaps(a: Rect, b: Rect): boolean {
   return a.x < b.x + b.width && b.x < a.x + a.width && a.y < b.y + b.height && b.y < a.y + a.height
 }
 
-function check(roots: TreeNode[]) {
-  const layout = layoutTree(roots, sizeOf, options)
+function check(roots: TreeNode[], direction: 'lr' | 'tb' = 'lr') {
+  const layout = layoutTree(roots, sizeOf, { ...options, direction })
   const rects = [...layout.rects.values()]
   for (let i = 0; i < rects.length; i++) {
     for (let j = i + 1; j < rects.length; j++) {
@@ -87,5 +87,30 @@ describe('layoutTree', () => {
     const parent = { x: 0, y: 0, width: 40, height: 20 }
     const child = { x: 80, y: 40, width: 40, height: 20 }
     expect(edgePath(parent, child)).toBe('M40,10 C60,10 60,50 80,50')
+  })
+
+  it('places children below the parent when laid out top to bottom', () => {
+    const { roots } = parseNodes(['- root', '  - a', '    - x', '    - y', '  - b'])
+    const layout = check(roots, 'tb')
+    const root = layout.rects.get('0')
+    const a = layout.rects.get('0.0')
+    const b = layout.rects.get('0.1')
+    if (!root || !a || !b) {
+      throw new Error('missing rect')
+    }
+    expect(a.y).toBeGreaterThan(root.y + root.height)
+    expect(b.x).toBeGreaterThan(a.x + a.width)
+    expect(a.y).toBe(b.y)
+    expect(a.width).toBe(sizeOf(roots[0]!.children[0]!).width)
+    for (const r of layout.rects.values()) {
+      expect(r.x + r.width).toBeLessThanOrEqual(layout.width)
+      expect(r.y + r.height).toBeLessThanOrEqual(layout.height)
+    }
+  })
+
+  it('draws vertical edges when laid out top to bottom', () => {
+    const parent = { x: 0, y: 0, width: 40, height: 20 }
+    const child = { x: 60, y: 60, width: 40, height: 20 }
+    expect(edgePath(parent, child, 'tb')).toBe('M20,20 C20,40 80,40 80,60')
   })
 })

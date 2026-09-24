@@ -23,6 +23,7 @@ import {
   searchInDiagram,
   selectLastLeaf,
   swap,
+  toggleDirection,
   toggleFold,
   toggleSource,
   undoInDiagram,
@@ -97,8 +98,8 @@ describe('entering and leaving', () => {
     const block = '```tree\n* a\n    + b\n* c\n```'
     view = setup(block)
     enterDiagram(view)
-    moveSelection(view, 'child')
-    moveSelection(view, 'parent')
+    moveSelection(view, 'right')
+    moveSelection(view, 'left')
     moveSelection(view, 'down')
     exitDiagram(view)
     expect(blockText(view)).toBe(block)
@@ -184,6 +185,36 @@ describe('building the tree', () => {
     expect(selected(view)).toEqual([2])
   })
 
+  it('switches the direction by rewriting only the fence', () => {
+    const block = '```tree foo=1\n* a\n    + b\n```'
+    view = setup(block)
+    enterDiagram(view)
+    expect(toggleDirection(view)).toBe(true)
+    expect(blockText(view)).toBe('```tree foo=1 layout=tb\n* a\n    + b\n```')
+    expect(isDiagramActive(view.state)).toBe(true)
+    toggleDirection(view)
+    expect(blockText(view)).toBe(block)
+    undoInDiagram(view)
+    expect(blockText(view)).toBe('```tree foo=1 layout=tb\n* a\n    + b\n```')
+  })
+
+  it('moves and swaps by screen direction in a top-to-bottom tree', () => {
+    view = setup('```tree layout=tb\n- a\n  - b\n  - c\n```')
+    enterDiagram(view)
+    moveSelection(view, 'right')
+    expect(selected(view)).toEqual([0])
+    moveSelection(view, 'down')
+    expect(selected(view)).toEqual([0, 0])
+    moveSelection(view, 'right')
+    expect(selected(view)).toEqual([0, 1])
+    swap(view, 'down')
+    expect(blockText(view)).toBe('```tree layout=tb\n- a\n  - b\n  - c\n```')
+    swap(view, 'left')
+    expect(blockText(view)).toBe('```tree layout=tb\n- a\n  - c\n  - b\n```')
+    moveSelection(view, 'up')
+    expect(selected(view)).toEqual([0])
+  })
+
   it('deletes into the register and pastes back', () => {
     view = setup('```tree\n- a\n  - a1\n- b\n```')
     enterDiagram(view)
@@ -213,7 +244,7 @@ describe('building the tree', () => {
   it('folds without changing the text and hides children from navigation', () => {
     view = setup('```tree\n- a\n  - b\n    - c\n```')
     enterDiagram(view)
-    moveSelection(view, 'child')
+    moveSelection(view, 'right')
     toggleFold(view)
     selectLastLeaf(view)
     expect(selected(view)).toEqual([0, 0])

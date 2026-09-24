@@ -15,8 +15,25 @@ export type KeyOverrides = Record<string, KeyBinding[]>
 export type ParsedOverrides = { ok: true; overrides: KeyOverrides } | { ok: false; error: string }
 
 /**
- * TREE モードを DIAGRAM モードと呼び替える前に書かれた keybindings.json を、今の ID と範囲に
- * 読み替える。利用者が手で書いたファイルなので、古い書き方でも割り当てを失わないようにする
+ * DIAGRAM モードの移動は、ツリーの向き（横 / 縦）を足したときに親子・兄弟から画面の向きの
+ * コマンドに替えた。横向きでは同じ動きになる
+ */
+const RENAMED: Record<string, string> = {
+  'diagram.parent': 'diagram.left',
+  'diagram.child': 'diagram.right',
+  'diagram.next': 'diagram.down',
+  'diagram.prev': 'diagram.up',
+}
+
+function renameId(id: string): string {
+  const current = id.startsWith('tree.') ? `diagram.${id.slice('tree.'.length)}` : id
+  return RENAMED[current] ?? current
+}
+
+/**
+ * TREE モードを DIAGRAM モードと呼び替える前や、コマンドの ID を替える前に書かれた
+ * keybindings.json を、今の ID と範囲に読み替える。利用者が手で書いたファイルなので、
+ * 古い書き方でも割り当てを失わないようにする
  */
 function migrateLegacy(raw: unknown): unknown {
   if (typeof raw !== 'object' || raw === null || Array.isArray(raw)) {
@@ -24,7 +41,7 @@ function migrateLegacy(raw: unknown): unknown {
   }
   return Object.fromEntries(
     Object.entries(raw).map(([id, keys]) => [
-      id.startsWith('tree.') ? `diagram.${id.slice('tree.'.length)}` : id,
+      renameId(id),
       Array.isArray(keys)
         ? keys.map((key: unknown) =>
             typeof key === 'object' && key !== null && 'scope' in key && key.scope === 'tree'

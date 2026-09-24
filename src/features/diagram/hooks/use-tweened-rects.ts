@@ -1,10 +1,11 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import type { TreeNode } from '../types/tree'
+import type { TreeDirection } from '../utils/direction'
 import type { Rect } from '../utils/layout'
 import { ease, lerpPosition, matchNodes, type VisibleNode } from '../utils/motion'
 
 const DURATION = 200
-/** 現れるノードは、この距離だけ左（親の側）から滑り込む */
+/** 現れるノードは、この距離だけ親の側（横向きなら左、縦向きなら上）から滑り込む */
 const ENTER_OFFSET = 12
 
 interface Tween {
@@ -66,6 +67,7 @@ function signatureOf(rects: ReadonlyMap<string, Rect>): string {
 export function useTweenedRects(
   nodes: readonly TreeNode[],
   target: ReadonlyMap<string, Rect>,
+  direction: TreeDirection = 'lr',
 ): TweenedRects {
   const [tween, setTween] = useState<Tween | null>(null)
   const [now, setNow] = useState(0)
@@ -109,7 +111,12 @@ export function useTweenedRects(
       if (was) {
         from.set(node.id, was)
       } else if (to) {
-        from.set(node.id, { ...to, x: to.x - ENTER_OFFSET })
+        from.set(
+          node.id,
+          direction === 'lr'
+            ? { ...to, x: to.x - ENTER_OFFSET }
+            : { ...to, y: to.y - ENTER_OFFSET },
+        )
       }
       // 現れている途中で配置し直しても、現れ始めた時刻は引き継ぐ
       const since = old === undefined ? start : tween?.entering.get(old)
@@ -119,7 +126,7 @@ export function useTweenedRects(
     }
     setTween({ start, from, entering })
     setNow(start)
-  }, [nodes, signature, target, tween])
+  }, [nodes, signature, target, tween, direction])
 
   useEffect(() => {
     if (!tween) {

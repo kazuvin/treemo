@@ -3,6 +3,7 @@ import { type KeyHint, KeyHints } from '@/components/ui/key-hints'
 import { cn } from '@/lib/cn'
 import type { Editing } from '../extensions/tree-state'
 import type { StrayLine, TreeNode } from '../types/tree'
+import type { TreeDirection } from '../utils/direction'
 import type { Zoom } from '../utils/zoom'
 import { KeyGuide } from './key-guide'
 import type { CommitNext } from './node-editor'
@@ -18,6 +19,7 @@ export type BlockStatus = 'idle' | 'selected' | 'diagram' | 'fullscreen'
 const SELECTED_HINTS: KeyHint[] = [
   { keys: ['Enter'], label: 'DIAGRAM モード' },
   { keys: ['gs'], label: 'ソース' },
+  { keys: ['gr'], label: '縦横' },
   { keys: ['j', 'k'], label: '前後の行へ' },
 ]
 
@@ -34,6 +36,7 @@ interface TreeBlockViewProps {
   hitId: string | null
   search: RegExp | null
   editing: Editing | null
+  direction: TreeDirection
   showGuide: boolean
   zoom: Zoom
   onSelectBlock: () => void
@@ -51,6 +54,7 @@ export function TreeBlockView({
   hitId,
   search,
   editing,
+  direction,
   showGuide,
   zoom,
   onSelectBlock,
@@ -91,6 +95,7 @@ export function TreeBlockView({
                 hitId={status === 'selected' ? hitId : null}
                 search={search}
                 editing={status === 'diagram' ? editing : null}
+                direction={direction}
                 showGuide={showGuide}
                 zoom={zoom}
                 onSelectNode={onSelectNode}
@@ -120,7 +125,7 @@ export function TreeBlockView({
           {status === 'selected' && <KeyHints className="mt-2" hints={SELECTED_HINTS} />}
           {status === 'diagram' && (
             <div className="mt-2 flex items-start gap-4">
-              {showGuide && <KeyGuide editing={editing} />}
+              {showGuide && <KeyGuide editing={editing} direction={direction} />}
               <ZoomControl className="ml-auto" />
             </div>
           )}

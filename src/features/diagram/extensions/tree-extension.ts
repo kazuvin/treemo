@@ -3,6 +3,7 @@ import { Decoration, type DecorationSet, EditorView, ViewPlugin } from '@codemir
 import { isReading, readingChanged } from '@/lib/reading'
 import { useModeStore } from '@/stores/mode-store'
 import { useDiagramStore } from '../stores/diagram-store'
+import { directionOf } from '../utils/direction'
 import { collapsedIds } from '../utils/ops'
 import { enterTreeSpec } from './tree-actions'
 import {
@@ -46,6 +47,7 @@ function buildDecorations(state: EditorState): DecorationSet {
       hitId: status === 'selected' ? hitId : null,
       search,
       editing: active?.editing ?? null,
+      direction: directionOf(block.block.info),
       foldKey: collapsedIds(roots).join(','),
     })
     ranges.push(Decoration.replace({ widget, block: true }).range(block.from, block.to))
@@ -91,6 +93,7 @@ function publish(state: EditorState): void {
       path: ui.active.path,
       editing: ui.active.editing,
       fullscreen: ui.active.fullscreen,
+      direction: directionOf(block.block.info),
     })
   } else if (tree.active) {
     tree.setActive(null)

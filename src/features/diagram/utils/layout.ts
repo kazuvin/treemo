@@ -1,8 +1,10 @@
 /**
- * 左から右へ広がるツリーの配置（docs/tree-block.md の「レイアウト」）。
+ * ツリーの配置（docs/tree-block.md の「レイアウト」）。左から右へ広がる形で組み、
  * 列（深さ）ごとに x をそろえ、縦は部分木の輪郭を突き合わせて詰める。
+ * 上から下へ広がる形は、縦横を入れ替えて同じように組む。
  */
 import type { TreeNode } from '../types/tree'
+import type { TreeDirection } from './direction'
 
 export interface Size {
   width: number
@@ -15,10 +17,11 @@ export interface Rect extends Size {
 }
 
 export interface LayoutOptions {
-  /** 列と列のあいだ */
+  /** 深さの段と段のあいだ（横向きなら列、縦向きなら行） */
   columnGap: number
   /** 兄弟の部分木どうしのあいだ */
   siblingGap: number
+  direction?: TreeDirection
 }
 
 interface Edge {
@@ -105,7 +108,27 @@ function place(
   return block
 }
 
+function transpose<T extends Size>(r: T): T {
+  return { ...r, width: r.height, height: r.width }
+}
+
 export function layoutTree(
+  roots: readonly TreeNode[],
+  sizeOf: (node: TreeNode) => Size,
+  options: LayoutOptions,
+): TreeLayout {
+  if (options.direction !== 'tb') {
+    return layoutLeftToRight(roots, sizeOf, options)
+  }
+  const turned = layoutLeftToRight(roots, (node) => transpose(sizeOf(node)), options)
+  const rects = new Map<string, Rect>()
+  for (const [id, r] of turned.rects) {
+    rects.set(id, { x: r.y, y: r.x, width: r.height, height: r.width })
+  }
+  return { rects, edges: turned.edges, width: turned.height, height: turned.width }
+}
+
+function layoutLeftToRight(
   roots: readonly TreeNode[],
   sizeOf: (node: TreeNode) => Size,
   options: LayoutOptions,
@@ -148,9 +171,18 @@ export function layoutTree(
 
 /**
  * 親の右端の中央から子の左端の中央へ引く S 字の曲線（SVG の path の d）。
- * 両端で水平に出入りするよう、制御点は端点と同じ高さに横へ半分ずつ寄せる
+ * 両端で水平に出入りするよう、制御点は端点と同じ高さに横へ半分ずつ寄せる。
+ * 縦向きでは親の下端の中央から子の上端の中央へ、両端で垂直に出入りする
  */
-export function edgePath(parent: Rect, child: Rect): string {
+export function edgePath(parent: Rect, child: Rect, direction: TreeDirection = 'lr'): string {
+  if (direction === 'tb') {
+    const sx = parent.x + parent.width / 2
+    const sy = parent.y + parent.height
+    const ex = child.x + child.width / 2
+    const ey = child.y
+    const k = Math.max(0, ey - sy) / 2
+    return `M${sx},${sy} C${sx},${sy + k} ${ex},${ey - k} ${ex},${ey}`
+  }
   const sx = parent.x + parent.width
   const sy = parent.y + parent.height / 2
   const ex = child.x
