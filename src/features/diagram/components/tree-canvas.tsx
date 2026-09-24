@@ -249,6 +249,7 @@ export function TreeCanvas({
             y={tweened.rect(node.id)?.y ?? 0}
             appear={tweened.appear(node.id)}
             selected={node.id === selectedId || node.id === hitId}
+            cursor={node.id === selectedId && !editing}
             search={search}
             editing={node.id === editingId ? editing : null}
             register={register}
@@ -349,6 +350,8 @@ interface NodeBoxProps {
   /** 現れている途中なら 0 から 1 */
   appear: number
   selected: boolean
+  /** DIAGRAM (NORMAL) のカーソル。本文の Vim のカーソルと同じく枠を点滅させる */
+  cursor: boolean
   search: RegExp | null
   editing: Editing | null
   register: (id: string, el: HTMLElement | null) => void
@@ -367,6 +370,7 @@ function NodeBox({
   y,
   appear,
   selected,
+  cursor,
   search,
   editing,
   register,
@@ -382,6 +386,7 @@ function NodeBox({
       data-tree-node=""
       role="treeitem"
       aria-selected={selected}
+      data-cursor-blink={cursor || undefined}
       tabIndex={-1}
       className={cn(
         'absolute w-max max-w-[calc(32ch+18px)] cursor-default rounded-sm border bg-card px-2 py-1 break-words',

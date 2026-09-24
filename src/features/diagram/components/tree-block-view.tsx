@@ -63,6 +63,7 @@ export function TreeBlockView({
     <div
       role="presentation"
       data-diagram-active={status === 'diagram'}
+      data-cursor-blink={status === 'selected' || undefined}
       className={cn(
         'my-2 rounded-card border px-4 py-3',
         // 枠はブロックに乗っているときと DIAGRAM モードのときだけ見せる。場所は常に取っておき、

@@ -397,6 +397,25 @@
   }
 }
 
+/* 本文の Vim のカーソルの代わりに枠でカーソルを示すもの（ツリーブロック、DIAGRAM (NORMAL) の
+   ノード）は、CodeMirror のカーソルと同じ 1.2 秒の周期で枠を点滅させる。
+   本文と同じく、エディタからフォーカスが外れているあいだは点滅を止める。 */
+@keyframes cursor-blink {
+  50% {
+    border-color: transparent;
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  [data-cursor-blink] {
+    animation: cursor-blink 1.2s steps(1) infinite;
+  }
+}
+
+.cm-editor:not(.cm-focused) [data-cursor-blink] {
+  animation: none;
+}
+
 /* 文字の大きさの倍率。applyFontSize が <html> の style で上書きする */
 :root {
   --font-scale: 1;
