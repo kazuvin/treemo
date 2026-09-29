@@ -30,7 +30,8 @@ export function DiagramFullscreen({ view }: { view: EditorView | null }) {
         {showGuide && <KeyGuide editing={active.editing} direction={active.direction} />}
         <ZoomControl className="ml-auto" />
       </div>
-      <div className="min-h-0 flex-1 overflow-auto px-6 pb-12">
+      {/* 図が画面より低いときは上下の中央に置き、はみ出すときは上端から見せる（safe） */}
+      <div className="flex min-h-0 flex-1 flex-col justify-center-safe overflow-auto px-6 py-12 *:shrink-0">
         {active.roots.length > 0 ? (
           <TreeCanvas
             roots={active.roots}
