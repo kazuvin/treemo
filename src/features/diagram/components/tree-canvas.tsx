@@ -166,8 +166,13 @@ export function TreeCanvas({
     // 書体が届くと同じ中身でも大きさが変わる
     const onFonts = () => setSizes(new Map())
     document.fonts.addEventListener('loadingdone', onFonts)
+    // 文字の大きさと書体の設定は <html> の変数（--font-scale など）に書かれる。中身をキーにした
+    // 大きさは古くなるので覚え直す。色の変数でも走るが、測り直すだけで害は無い
+    const rootStyle = new MutationObserver(onFonts)
+    rootStyle.observe(document.documentElement, { attributes: true, attributeFilter: ['style'] })
     return () => {
       observer.disconnect()
+      rootStyle.disconnect()
       document.fonts.removeEventListener('loadingdone', onFonts)
     }
   }, [editingId])
