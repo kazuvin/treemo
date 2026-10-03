@@ -1,7 +1,9 @@
 import { Button } from '@/components/ui/button'
-import { useVaultStore } from '../stores/vault-store'
+import type { SessionSnapshot } from '../utils/note-session'
 
 interface SessionBannerProps {
+  /** 本文を左右に分けたときは領域ごとに出すので、どの領域のものかを呼ぶ側が渡す */
+  session: SessionSnapshot
   onKeepMine: () => void
   onTakeTheirs: () => void
 }
@@ -10,8 +12,7 @@ interface SessionBannerProps {
  * 衝突と保存の失敗を、エディタの上にその場で出す。利用者が選ぶ必要があるので
  * トーストにはしない（docs/coding-standards.md の「失敗の伝え方」）。
  */
-export function SessionBanner({ onKeepMine, onTakeTheirs }: SessionBannerProps) {
-  const session = useVaultStore((s) => s.session)
+export function SessionBanner({ session, onKeepMine, onTakeTheirs }: SessionBannerProps) {
   if (session.saveState === 'conflict') {
     return (
       <div

@@ -135,13 +135,18 @@ feature は他の feature を import できない。エディタにツリーの�
 import { Editor } from '@/features/editor/components/editor'
 import { treeExtension } from '@/features/diagram/extensions/tree-extension'
 
-const editorExtensions = [treeExtension(), notes.extension]
-<Editor extensions={editorExtensions} onReady={attachEditor} />
+const extensions = [treeExtension((view) => notes.isActiveView(view)), pane.extension]
+<Editor extensions={extensions} onReady={(handle) => notes.attach(pane.key, handle)} />
 ```
 
 - 開いているメモの読み書き（エディタとファイルをつなぐ）は `src/app/note-controller.ts` が
   受け持つ。保存の時機と衝突の判定は `features/vault/utils/note-session.ts`（エディタを
   知らない純粋なクラス）にあり、controller がエディタの本文を渡す。
+- 本文を左右に分けると、エディタが領域（`Pane`）ごとに 1 つずつできる。controller は
+  領域ごとにエディタとセッションを持ち、読み書きは全領域で 1 本の列に並べる。
+  `mode-store`・`diagram-store`・`vault-store` の `openPath` / `session` は、キー入力を受ける
+  領域のものだけを映す。もう一方のエディタは状態を流さず、領域を移ったときに流し直す。
+  領域の並びは `src/app/pane-store.ts` に写す。
 
 - `features/editor` は、外から CodeMirror の拡張を受け取れるようにだけしておく。
   ツリーを知らない。

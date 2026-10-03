@@ -18,6 +18,8 @@ const noteStateSchema = z.object({
 const schema = z.object({
   lastVault: z.string().nullable().default(null),
   lastNote: z.record(z.string(), z.string()).default({}),
+  /** 本文を左右に分けていた保管庫の、右のメモ（何も開いていなければ空文字） */
+  splitNote: z.record(z.string(), z.string()).default({}),
   sidebarVisible: z.boolean().default(true),
   sidebarSide: z.enum(['left', 'right']).catch('left'),
   reading: z.boolean().catch(false),

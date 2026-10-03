@@ -100,26 +100,39 @@ function publish(state: EditorState): void {
   }
 }
 
-const publisher = ViewPlugin.define((view) => {
+/** フォーカスする領域を替えたとき、新しい領域のエディタの状態を流し直す */
+export function syncTreeState(view: EditorView): void {
   publish(view.state)
-  return {
-    update: (update) => {
-      if (
-        update.docChanged ||
-        update.selectionSet ||
-        update.transactions.some(readingChanged) ||
-        update.startState.field(treeUiField) !== update.state.field(treeUiField)
-      ) {
-        publish(update.state)
-      }
-    },
-    destroy: () => {
-      useModeStore.getState().setDiagram(false)
-      useModeStore.getState().setOnTreeBlock(false)
-      useDiagramStore.getState().setActive(null)
-    },
-  }
-})
+}
+
+/** 状態を流すのは、キー入力を受ける領域のエディタだけ（本文を左右に分けたとき） */
+function publisher(isActive: (view: EditorView) => boolean) {
+  return ViewPlugin.define((view) => {
+    if (isActive(view)) {
+      publish(view.state)
+    }
+    return {
+      update: (update) => {
+        if (
+          isActive(update.view) &&
+          (update.docChanged ||
+            update.selectionSet ||
+            update.transactions.some(readingChanged) ||
+            update.startState.field(treeUiField) !== update.state.field(treeUiField))
+        ) {
+          publish(update.state)
+        }
+      },
+      destroy: () => {
+        if (isActive(view)) {
+          useModeStore.getState().setDiagram(false)
+          useModeStore.getState().setOnTreeBlock(false)
+          useDiagramStore.getState().setActive(null)
+        }
+      },
+    }
+  })
+}
 
 /**
  * Vim の検索などでカーソルがノードの行に置かれたら、そのノードを選んで DIAGRAM (NORMAL) に入る
@@ -162,14 +175,14 @@ const blockTheme = [
 ]
 
 /** エディタにツリーブロックを載せる拡張。app が features/editor に渡す */
-export function treeExtension(): Extension {
+export function treeExtension(isActive: (view: EditorView) => boolean = () => true): Extension {
   return [
     blocksField,
     treeUiField,
     searchHighlightField,
     decorationsField,
     enterOnHit,
-    publisher,
+    publisher(isActive),
     atomic,
     blockTheme,
   ]

@@ -17,11 +17,15 @@ import { DEFAULT_VIM_CONFIG, type VimConfig } from '../utils/vim-config'
 export interface ExHandlers {
   write: () => void
   edit: (name: string) => void
+  /** `:vs [名前]`。名前が空なら何も開かない領域を足す */
+  vsplit: (name: string) => void
+  /** `:q` と `:close`。今の領域を閉じる */
+  close: () => void
 }
 
 let exHandlers: ExHandlers | null = null
 
-/** `:w` と `:e 名前` の行き先。保存やメモを開く処理は vault 側にあるので、app が渡す */
+/** `:w` `:e 名前` `:vs` `:q` の行き先。保存やメモを開く処理は vault 側にあるので、app が渡す */
 export function setExHandlers(handlers: ExHandlers | null): void {
   exHandlers = handlers
 }
@@ -79,6 +83,9 @@ function configureVim(): void {
       exHandlers?.edit(name)
     }
   })
+  Vim.defineEx('vsplit', 'vs', (_cm, params) => exHandlers?.vsplit(params.args?.join(' ') ?? ''))
+  Vim.defineEx('quit', 'q', () => exHandlers?.close())
+  Vim.defineEx('close', 'clo', () => exHandlers?.close())
   for (const [name, run] of FOLDS) {
     Vim.defineAction(name, (cm) => {
       const view = viewOf(cm)
@@ -197,7 +204,7 @@ const clearHighlightAfterSearch = ViewPlugin.define((view) => {
 })
 
 /** Vim のキーバインドと、モードが変わったときの知らせ */
-export function vimBridge(onModeChange: (mode: VimMode) => void): Extension {
+export function vimBridge(onModeChange: (mode: VimMode, view: EditorView) => void): Extension {
   if (!configured) {
     applyVimConfig(DEFAULT_VIM_CONFIG)
   }
@@ -209,15 +216,24 @@ export function vimBridge(onModeChange: (mode: VimMode) => void): Extension {
         queueMicrotask(() => Vim.handleKey(cm, '<Esc>', 'user'))
         return
       }
-      onModeChange(toVimMode(event.mode))
+      onModeChange(toVimMode(event.mode), view)
     }
     cm?.on('vim-mode-change', handler)
-    onModeChange('NORMAL')
+    onModeChange('NORMAL', view)
     return {
       destroy: () => cm?.off('vim-mode-change', handler),
     }
   })
   return [vim(), listener, clearHighlightAfterSearch]
+}
+
+/** そのエディタの今の Vim のモード。フォーカスする領域を替えたときに読み直す */
+export function vimModeOf(view: EditorView): VimMode {
+  const state = getCM(view)?.state.vim
+  if (state?.insertMode) {
+    return 'INSERT'
+  }
+  return state?.visualMode ? 'VISUAL' : 'NORMAL'
 }
 
 /** Vim がキーの続き（演算子や `f` の文字）を待っているか */

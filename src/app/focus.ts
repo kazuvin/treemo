@@ -27,8 +27,14 @@ export function focusSidebar(): void {
   })
 }
 
+/** 最後にキー入力を受けていた本文の領域へ移る */
 export function focusEditor(): void {
-  notes.view?.focus()
+  notes.focusPane()
+}
+
+/** 左から数えて index 番目の本文の領域へ移る */
+export function focusPane(index: number): void {
+  notes.focusPane(index)
 }
 
 /** フォーカスの入った要素から、キー入力を受け取っている領域を決める（F-UX-7） */
@@ -38,6 +44,10 @@ export function trackFocus(target: EventTarget | null): void {
   if (el?.closest('[data-sidebar]')) {
     setFocus('sidebar')
   } else if (el?.closest('[data-editor-pane]')) {
+    const key = el.closest<HTMLElement>('[data-pane-key]')?.dataset.paneKey
+    if (key !== undefined) {
+      notes.activate(Number(key))
+    }
     setFocus('editor')
   } else {
     setFocus('overlay')

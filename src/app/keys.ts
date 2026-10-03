@@ -60,6 +60,10 @@ export function getScopes(): KeyScope[] {
     return [...scopes, 'sidebar', 'normal']
   }
   const view = getContext().view
+  if (mode.focus === 'editor' && !view) {
+    // メモを開いていない領域。エディタは無いが、メモを開く・領域を移るキーは効かせる
+    return [...scopes, 'normal']
+  }
   if (mode.focus !== 'editor' || !view || mode.nodeEditing) {
     return scopes
   }

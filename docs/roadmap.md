@@ -106,3 +106,10 @@ MVP の外で足したもの。読む: [要件定義](requirements.md) の F-EDI
 - [x] **7-2 タグ検索。** F-VAULT-8。Rust の `vault_front_matters` とタグの一覧。
 - [x] **7-3 本文の上のタイトル。** F-EDIT-6。`features/editor/extensions/note-title.ts`。
 - [x] **7-4 表。** F-EDIT-8。`features/editor/extensions/table.ts`。
+
+## M8 本文の分割
+
+MVP の外で足したもの。読む: [キー操作](keybindings.md) の「本文を分ける」、[設計](architecture.md)
+
+- [x] **8-1 本文を左右に分ける。** F-EDIT-9。`<C-w>v` / `:vs` / `<C-w>q` / `⌘1` `⌘2`。
+  `NoteController` を領域ごとのエディタとセッションに分けた。

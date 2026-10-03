@@ -1,4 +1,6 @@
-import { useEffect, useState, useSyncExternalStore } from 'react'
+import type { Extension } from '@codemirror/state'
+import type { EditorView } from '@codemirror/view'
+import { useEffect, useState } from 'react'
 import { SidebarKeyGuide } from '@/components/layouts/sidebar-key-guide'
 import { StatusBar } from '@/components/layouts/status-bar'
 import { PromptDialog } from '@/components/ui/prompt-dialog'
@@ -33,7 +35,8 @@ import { applyFontFamily, sanitizeFontFamily } from '@/lib/font-family'
 import { applyFontSize, sanitizeFontSize } from '@/lib/font-size'
 import { readingField, setReading } from '@/lib/reading'
 import { applyTheme, resolveTheme, sanitizeCustomThemes } from '@/lib/theme'
-import { useModeStore } from '@/stores/mode-store'
+import { useModeStore, type VimMode } from '@/stores/mode-store'
+import { useStatusStore } from '@/stores/status-store'
 import { useThemeStore } from '@/stores/theme-store'
 import {
   loadKeybindings,
@@ -46,29 +49,53 @@ import {
 import { focusEditor, restoreFocus, trackFocus } from './focus'
 import { clearStatusMessage, getContext, getScopes, replayKeys, swallowKey } from './keys'
 import { notes } from './note-controller'
+import { type PaneSnapshot, usePaneStore } from './pane-store'
 import { loadPersistedState, updatePersistedState } from './persisted-state'
 import { ReadingToggle } from './reading-toggle'
 import { SettingsScreen } from './settings-screen'
 import { type SidebarSide, useUiStore } from './ui-store'
 
-/** Editor に渡す拡張。作り直すとエディタごと作り直しになるので、ここで 1 度だけ作る */
-const editorExtensions = [
-  // メモを開き直すたびに今の表示（編集 / 閲覧）で始める
-  readingField.init(() => useUiStore.getState().reading),
-  treeExtension(),
-  notes.extension,
-  tagClickHandler.of((tag) => void openTagSearch(tag)),
-  noteTitleClickHandler.of(() => renameNote(false, useVaultStore.getState().openPath)),
-]
+/** Editor に渡す拡張。作り直すとエディタごと作り直しになるので、領域ごとに 1 度だけ作る */
+const paneExtensions = new Map<number, readonly Extension[]>()
+const paneReady = new Map<number, (handle: EditorHandle | null) => void>()
 
-let editorView: EditorHandle['view'] | null = null
-const viewListeners = new Set<() => void>()
+function extensionsFor(key: number): readonly Extension[] {
+  let extensions = paneExtensions.get(key)
+  const pane = notes.pane(key)
+  if (!extensions && pane) {
+    extensions = [
+      // メモを開き直すたびに今の表示（編集 / 閲覧）で始める
+      readingField.init(() => useUiStore.getState().reading),
+      treeExtension((view) => notes.isActiveView(view)),
+      pane.extension,
+      tagClickHandler.of((tag) => void openTagSearch(tag)),
+      noteTitleClickHandler.of(() => renameNote(false, pane.openPath)),
+    ]
+    paneExtensions.set(key, extensions)
+  }
+  return extensions ?? []
+}
 
-function attachEditor(handle: EditorHandle | null): void {
-  notes.attach(handle)
-  editorView = handle?.view ?? null
-  for (const listener of viewListeners) {
-    listener()
+function onReadyFor(key: number): (handle: EditorHandle | null) => void {
+  let onReady = paneReady.get(key)
+  if (!onReady) {
+    onReady = (handle) => {
+      notes.attach(key, handle)
+      // 閉じた領域のものだけ捨てる。StrictMode のやり直しで作り直すと、エディタの中身が消える
+      if (!handle && !notes.pane(key)) {
+        paneExtensions.delete(key)
+        paneReady.delete(key)
+      }
+    }
+    paneReady.set(key, onReady)
+  }
+  return onReady
+}
+
+/** 状態を流すのは、キー入力を受ける領域のエディタだけ */
+function onModeChange(mode: VimMode, view: EditorView): void {
+  if (notes.isActiveView(view)) {
+    useModeStore.getState().setVim(mode)
   }
 }
 
@@ -81,15 +108,18 @@ function openByName(name: string): void {
   void (exists ? notes.openNote(path) : notes.createNote(path))
 }
 
-function subscribeEditorView(listener: () => void): () => void {
-  viewListeners.add(listener)
-  return () => {
-    viewListeners.delete(listener)
+/** `:vs [名前]`。名前が無ければ何も開かない領域を足す */
+function splitByName(name: string): void {
+  if (!name.trim()) {
+    void notes.split(null)
+    return
   }
-}
-
-function useEditorView(): EditorHandle['view'] | null {
-  return useSyncExternalStore(subscribeEditorView, () => editorView)
+  const path = toNotePath(name)
+  if (!path) {
+    useStatusStore.getState().show('使えない名前です')
+    return
+  }
+  void notes.split(path)
 }
 
 function SettingsIcon() {
@@ -177,12 +207,17 @@ async function boot(): Promise<void> {
     if (ui.bgmVolume !== prev.bgmVolume) {
       setAmbienceVolume(ui.bgmVolume)
     }
-    if (ui.reading !== prev.reading && editorView) {
-      // 閲覧モードでは図を組み立てられないので、DIAGRAM モードを出てから切り替える
-      if (ui.reading && isDiagramActive(editorView.state)) {
-        exitDiagram(editorView)
+    if (ui.reading !== prev.reading) {
+      for (const view of notes.panes.map((pane) => pane.view)) {
+        if (!view) {
+          continue
+        }
+        // 閲覧モードでは図を組み立てられないので、DIAGRAM モードを出てから切り替える
+        if (ui.reading && isDiagramActive(view.state)) {
+          exitDiagram(view)
+        }
+        view.dispatch({ effects: setReading.of(ui.reading) })
       }
-      editorView.dispatch({ effects: setReading.of(ui.reading) })
     }
     if (
       ui.sidebarVisible !== prev.sidebarVisible ||
@@ -226,10 +261,59 @@ async function boot(): Promise<void> {
   }
 }
 
+interface EditorPaneProps {
+  pane: PaneSnapshot
+  /** キー入力を受ける領域か。全画面の図と閲覧モードの切り替えは、この領域にだけ出す */
+  active: boolean
+  focused: boolean
+  /** 左に別の領域があるか（境の線を引く） */
+  divided: boolean
+  readingKey: string | null
+  emptyHint: string | null
+}
+
+/** 本文の領域 1 つ。左右に分けたときは 2 つ並ぶ */
+function EditorPane({ pane, active, focused, divided, readingKey, emptyHint }: EditorPaneProps) {
+  const view = active ? (notes.pane(pane.key)?.view ?? null) : null
+  return (
+    <section
+      data-editor-pane=""
+      data-pane-key={pane.key}
+      // メモを開いていない領域でもキーを受けられるよう、領域そのものにフォーカスを置ける
+      tabIndex={-1}
+      aria-label="本文"
+      className={cn(
+        'relative flex min-h-0 min-w-0 flex-1 flex-col outline-none',
+        divided && 'border-l border-border',
+      )}
+    >
+      {focused && <div className="absolute inset-x-0 top-0 z-20 h-0.5 bg-ring" />}
+      <SessionBanner
+        session={pane.session}
+        onKeepMine={() => void notes.keepMine(pane.key)}
+        onTakeTheirs={() => notes.takeTheirs(pane.key)}
+      />
+      <div className={cn('min-h-0 flex-1', !pane.openPath && 'invisible')}>
+        <Editor
+          extensions={extensionsFor(pane.key)}
+          onReady={onReadyFor(pane.key)}
+          onModeChange={onModeChange}
+        />
+      </div>
+      {pane.openPath && active && <ReadingToggle keyLabel={readingKey} />}
+      {!pane.openPath && emptyHint && (
+        <div className="absolute inset-0 grid place-items-center px-6 text-center text-muted-foreground">
+          <p>{emptyHint}</p>
+        </div>
+      )}
+      <DiagramFullscreen view={view} />
+    </section>
+  )
+}
+
 export function App() {
   const [ready, setReady] = useState(false)
   const vault = useVaultStore((s) => s.vault)
-  const openPath = useVaultStore((s) => s.openPath)
   const sidebarVisible = useUiStore((s) => s.sidebarVisible)
   const sidebarSide = useUiStore((s) => s.sidebarSide)
   const settings = usePresence(useUiStore((s) => s.settingsOpen))
@@ -238,7 +322,8 @@ export function App() {
   const promptPresence = usePresence(promptRequest !== null)
   const focus = useModeStore((s) => s.focus)
   const commands = useCommandStore((s) => s.commands)
-  const view = useEditorView()
+  const panes = usePaneStore((s) => s.panes)
+  const activePane = usePaneStore((s) => s.active)
   const bgm = useUiStore((s) => s.bgm)
   const themeAmbience = useThemeStore((s) => resolveTheme(s.theme, s.customThemes).ambience)
   const ambience = currentAmbience(bgm, themeAmbience)
@@ -259,7 +344,12 @@ export function App() {
 
   useEffect(() => {
     registerDefaultCommands()
-    setExHandlers({ write: () => void notes.flush(), edit: openByName })
+    setExHandlers({
+      write: () => void notes.flush(),
+      edit: openByName,
+      vsplit: splitByName,
+      close: () => void notes.closePane(),
+    })
     void boot().finally(() => setReady(true))
     const unlisten = onVaultChanged((paths) => void notes.onVaultChanged(paths)).catch(
       (error: unknown) => {
@@ -335,32 +425,32 @@ export function App() {
             {focus === 'sidebar' && <SidebarKeyGuide />}
           </aside>
         )}
-        <main data-editor-pane="" className="relative flex min-h-0 flex-col">
-          {focus === 'editor' && <div className="absolute inset-x-0 top-0 z-20 h-0.5 bg-ring" />}
-          <SessionBanner
-            onKeepMine={() => void notes.keepMine()}
-            onTakeTheirs={() => notes.takeTheirs()}
-          />
-          <div className={cn('min-h-0 flex-1', !openPath && 'invisible')}>
-            <Editor extensions={editorExtensions} onReady={attachEditor} />
-          </div>
-          {openPath && <ReadingToggle keyLabel={readingKey} />}
-          {!openPath && vault && (
-            <div className="absolute inset-0 grid place-items-center text-muted-foreground">
-              <p>
-                {[
-                  'メモを開いていません',
-                  hint('vault.switcher', '開く'),
-                  hint('vault.newNote', '作る'),
-                  hint('app.focusSidebar', 'サイドバーへ'),
-                  hint('app.keyList', 'キー操作の一覧'),
-                ]
-                  .filter(Boolean)
-                  .join(' · ')}
-              </p>
-            </div>
-          )}
-          <DiagramFullscreen view={view} />
+        <main className="relative flex min-h-0">
+          {panes.map((pane, index) => (
+            <EditorPane
+              key={pane.key}
+              pane={pane}
+              active={index === activePane}
+              focused={focus === 'editor' && index === activePane}
+              divided={index > 0}
+              readingKey={readingKey}
+              emptyHint={
+                vault
+                  ? [
+                      'メモを開いていません',
+                      hint('vault.switcher', '開く'),
+                      hint('vault.newNote', '作る'),
+                      hint('app.focusSidebar', 'サイドバーへ'),
+                      index > 0
+                        ? hint('app.closePane', '閉じる')
+                        : hint('app.keyList', 'キー操作の一覧'),
+                    ]
+                      .filter(Boolean)
+                      .join(' · ')
+                  : null
+              }
+            />
+          ))}
           <WhichKey getContext={getContext} getScopes={getScopes} />
         </main>
       </div>

@@ -1,7 +1,7 @@
 import { EditorState, type Extension } from '@codemirror/state'
 import { EditorView } from '@codemirror/view'
 import { useEffect, useRef } from 'react'
-import { useModeStore } from '@/stores/mode-store'
+import type { VimMode } from '@/stores/mode-store'
 import { baseExtensions } from '../extensions/base'
 import { bodyStart, frontMatter } from '../extensions/front-matter'
 import { livePreview } from '../extensions/live-preview'
@@ -22,10 +22,12 @@ interface EditorProps {
   /** 外から足す拡張（ツリーブロックなど）。作り直さないよう、呼ぶ側で固定しておく */
   extensions: readonly Extension[]
   onReady: (handle: EditorHandle | null) => void
+  /** Vim のモードが変わったとき。エディタが複数あるので、どれのモードかも渡す */
+  onModeChange: (mode: VimMode, view: EditorView) => void
 }
 
 /** 開いているメモの正本（EditorState.doc）を持つエディタ */
-export function Editor({ extensions, onReady }: EditorProps) {
+export function Editor({ extensions, onReady, onModeChange }: EditorProps) {
   const ref = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -35,7 +37,7 @@ export function Editor({ extensions, onReady }: EditorProps) {
     }
     const all = [
       // Vim は他のキー割り当てより前に置く。後ろだと macOS の Ctrl-d（1 文字削除）などが先に効く
-      vimBridge((mode) => useModeStore.getState().setVim(mode)),
+      vimBridge((mode, view) => onModeChange(mode, view)),
       ...baseExtensions(),
       frontMatter(),
       livePreview(),
@@ -54,7 +56,7 @@ export function Editor({ extensions, onReady }: EditorProps) {
       onReady(null)
       view.destroy()
     }
-  }, [extensions, onReady])
+  }, [extensions, onReady, onModeChange])
 
   return <div ref={ref} className="h-full min-h-0" />
 }

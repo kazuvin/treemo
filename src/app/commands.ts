@@ -27,9 +27,9 @@ import { THEMES } from '@/lib/theme'
 import { useModeStore } from '@/stores/mode-store'
 import { useStatusStore } from '@/stores/status-store'
 import { useThemeStore } from '@/stores/theme-store'
-import { focusEditor, focusSidebar, rememberFocus } from './focus'
+import { focusEditor, focusPane, focusSidebar, rememberFocus } from './focus'
 import { openKeybindings, readKeybindings, writeKeybindings } from './keybindings'
-import { notes } from './note-controller'
+import { MAX_PANES, notes } from './note-controller'
 import { useUiStore } from './ui-store'
 
 export async function pickVault(): Promise<void> {
@@ -222,32 +222,75 @@ function closeCursor(): void {
 
 type Direction = 'left' | 'right'
 
-/** 今フォーカスのある領域から見て、その向きにある領域へ移る関数。何も無ければ null */
-function paneToward(direction: Direction): (() => void) | null {
+/** サイドバーか、左から数えた本文の領域の添字 */
+type Area = 'sidebar' | number
+
+/** 画面に並んでいる順の領域。隠したサイドバーも、`<C-w>h` などで出せるよう並べておく */
+function areas(): Area[] {
+  const panes = notes.panes.map((_, i) => i)
+  return useUiStore.getState().sidebarSide === 'left'
+    ? ['sidebar', ...panes]
+    : [...panes, 'sidebar']
+}
+
+function currentArea(): Area | null {
   const focus = useModeStore.getState().focus
-  const sidebarOnLeft = useUiStore.getState().sidebarSide === 'left'
-  const towardSidebar = sidebarOnLeft ? 'left' : 'right'
-  if (focus === 'editor' && direction === towardSidebar) {
-    return focusSidebar
+  if (focus === 'sidebar') {
+    return 'sidebar'
   }
-  if (focus === 'sidebar' && direction !== towardSidebar) {
-    return focusEditor
+  return focus === 'editor' ? notes.activeIndex : null
+}
+
+function focusArea(area: Area): void {
+  if (area === 'sidebar') {
+    focusSidebar()
+  } else {
+    focusPane(area)
   }
-  return null
+}
+
+/** 今フォーカスのある領域から見て、その向きの隣にある領域。何も無ければ null */
+function areaToward(direction: Direction): Area | null {
+  const current = currentArea()
+  if (current === null) {
+    return null
+  }
+  const list = areas()
+  return list[list.indexOf(current) + (direction === 'left' ? -1 : 1)] ?? null
+}
+
+/** `<C-w>w`。右隣へ移り、右端からは左端へ戻る */
+function focusNextArea(): void {
+  const list = areas()
+  const current = currentArea()
+  const next = list[(current === null ? 0 : list.indexOf(current) + 1) % list.length]
+  if (next !== undefined) {
+    focusArea(next)
+  }
 }
 
 /**
- * 本文の行頭で h（行末で l）を押したとき、その先にサイドバーがあれば移る。
+ * 本文の行頭で h（行末で l）を押したとき、その先に領域があれば移る。サイドバーは出ているときだけ。
  * 押し続けて行頭を行き過ぎたときに移らないよう、自動の繰り返しでは効かせない。
  */
 function atEdgeToward(direction: Direction, ctx: CommandContext): boolean {
-  const ui = useUiStore.getState()
-  if (ctx.repeat || !ctx.view || !ui.sidebarVisible || paneToward(direction) !== focusSidebar) {
+  const target = areaToward(direction)
+  if (ctx.repeat || !ctx.view || target === null) {
+    return false
+  }
+  if (target === 'sidebar' && !useUiStore.getState().sidebarVisible) {
     return false
   }
   const head = ctx.view.state.selection.main.head
   const line = ctx.view.state.doc.lineAt(head)
   return direction === 'left' ? head === line.from : head >= Math.max(line.from, line.to - 1)
+}
+
+function moveToward(direction: Direction): void {
+  const target = areaToward(direction)
+  if (target !== null) {
+    focusArea(target)
+  }
 }
 
 export function openSettings(): void {
@@ -492,54 +535,78 @@ const appCommands: Command[] = [
   {
     id: 'app.focusEditor',
     title: 'エディタへ移る',
-    keys: [
-      { scope: 'global', sequence: '⌘1' },
-      { scope: 'sidebar', sequence: 'Esc' },
-    ],
+    keys: [{ scope: 'sidebar', sequence: 'Esc' }],
     run: focusEditor,
   },
   {
+    id: 'app.focusPane1',
+    title: '左の本文へ移る（分けていなければ本文へ）',
+    keys: [{ scope: 'global', sequence: '⌘1' }],
+    run: () => focusPane(0),
+  },
+  {
+    id: 'app.focusPane2',
+    title: '右の本文へ移る',
+    keys: [{ scope: 'global', sequence: '⌘2' }],
+    when: () => notes.panes.length > 1,
+    run: () => focusPane(1),
+  },
+  {
+    id: 'app.splitVertical',
+    title: '本文を左右に分ける',
+    keys: [
+      { scope: 'normal', sequence: '<C-w>v' },
+      { scope: 'normal', sequence: '<C-w><C-v>' },
+    ],
+    when: () => hasVault() && notes.panes.length < MAX_PANES,
+    run: () => void notes.split(null),
+  },
+  {
+    id: 'app.closePane',
+    title: '本文の領域を閉じる',
+    keys: [
+      { scope: 'normal', sequence: '<C-w>q' },
+      { scope: 'normal', sequence: '<C-w>c' },
+    ],
+    when: () => notes.panes.length > 1,
+    run: () => void notes.closePane(),
+  },
+  {
     id: 'app.toggleFocus',
-    title: 'サイドバーとエディタを行き来する',
+    title: '次の領域へ移る（右端からは左端へ）',
     keys: [
       { scope: 'normal', sequence: '<C-w>w' },
       { scope: 'normal', sequence: '<C-w><C-w>' },
     ],
-    run: () => {
-      if (useModeStore.getState().focus === 'sidebar') {
-        focusEditor()
-      } else {
-        focusSidebar()
-      }
-    },
+    run: focusNextArea,
   },
   {
     id: 'app.focusLeft',
     title: '左の領域へ移る',
     keys: [{ scope: 'normal', sequence: '<C-w>h' }],
-    when: () => paneToward('left') !== null,
-    run: () => paneToward('left')?.(),
+    when: () => areaToward('left') !== null,
+    run: () => moveToward('left'),
   },
   {
     id: 'app.focusRight',
     title: '右の領域へ移る',
     keys: [{ scope: 'normal', sequence: '<C-w>l' }],
-    when: () => paneToward('right') !== null,
-    run: () => paneToward('right')?.(),
+    when: () => areaToward('right') !== null,
+    run: () => moveToward('right'),
   },
   {
     id: 'app.edgeLeft',
-    title: '行頭から左のサイドバーへ移る',
+    title: '行頭から左の領域へ移る',
     keys: [{ scope: 'normal', sequence: 'h' }],
     when: (ctx) => atEdgeToward('left', ctx),
-    run: focusSidebar,
+    run: () => moveToward('left'),
   },
   {
     id: 'app.edgeRight',
-    title: '行末から右のサイドバーへ移る',
+    title: '行末から右の領域へ移る',
     keys: [{ scope: 'normal', sequence: 'l' }],
     when: (ctx) => atEdgeToward('right', ctx),
-    run: focusSidebar,
+    run: () => moveToward('right'),
   },
   {
     id: 'diagram.toggleKeyGuide',
