@@ -356,6 +356,56 @@ pub fn rename(root: &Path, from: &str, to: &str) -> Result<()> {
     Ok(())
 }
 
+/// 複製の名前の候補。`メモ 2.md` の形は iCloud の衝突と見分けがつかないので使わない
+fn copy_name(stem: &str, n: usize) -> String {
+    if n == 1 {
+        format!("{stem} のコピー.{NOTE_EXT}")
+    } else {
+        format!("{stem} のコピー ({n}).{NOTE_EXT}")
+    }
+}
+
+/// `from` のメモを `dir`（空なら保管庫の直下）に複製し、作ったメモの相対パスを返す
+pub fn duplicate(root: &Path, from: &str, dir: &str) -> Result<String> {
+    let src = resolve_note(root, from)?;
+    if !src.is_file() {
+        return Err(VaultError::NotFound(from.to_owned()));
+    }
+    if !dir.is_empty() && !resolve(root, dir)?.is_dir() {
+        return Err(VaultError::NotFound(dir.to_owned()));
+    }
+    let stem = src
+        .file_stem()
+        .ok_or_else(|| VaultError::InvalidPath(from.to_owned()))?
+        .to_string_lossy()
+        .into_owned();
+    for n in 1..=1000 {
+        let name = copy_name(&stem, n);
+        let rel = if dir.is_empty() {
+            name
+        } else {
+            format!("{dir}/{name}")
+        };
+        let dst = resolve_note(root, &rel)?;
+        let mut file = match fs::OpenOptions::new()
+            .write(true)
+            .create_new(true)
+            .open(&dst)
+        {
+            Ok(file) => file,
+            Err(e) if e.kind() == std::io::ErrorKind::AlreadyExists => continue,
+            Err(e) => return Err(e.into()),
+        };
+        let copied = std::io::copy(&mut fs::File::open(&src)?, &mut file);
+        if let Err(e) = copied {
+            let _ = fs::remove_file(&dst);
+            return Err(e.into());
+        }
+        return Ok(rel);
+    }
+    Err(VaultError::AlreadyExists(copy_name(&stem, 1000)))
+}
+
 pub fn trash(root: &Path, rel: &str) -> Result<()> {
     let path = resolve_note(root, rel)?;
     if !path.exists() {
@@ -402,6 +452,47 @@ mod tests {
         assert!(matches!(
             resolve(dir.path(), "link/x.md"),
             Err(VaultError::OutsideVault(_))
+        ));
+    }
+
+    #[test]
+    fn duplicate_numbers_copies_without_looking_like_conflicts() {
+        let dir = vault();
+        fs::write(dir.path().join("a.md"), "body").unwrap();
+        assert_eq!(duplicate(dir.path(), "a.md", "").unwrap(), "a のコピー.md");
+        assert_eq!(
+            duplicate(dir.path(), "a.md", "").unwrap(),
+            "a のコピー (2).md"
+        );
+        assert_eq!(
+            fs::read_to_string(dir.path().join("a のコピー (2).md")).unwrap(),
+            "body"
+        );
+        assert!(list(dir.path()).unwrap().iter().all(|e| !e.conflict));
+    }
+
+    #[test]
+    fn duplicate_into_another_folder() {
+        let dir = vault();
+        fs::create_dir(dir.path().join("sub")).unwrap();
+        fs::write(dir.path().join("a.md"), "body").unwrap();
+        assert_eq!(
+            duplicate(dir.path(), "a.md", "sub").unwrap(),
+            "sub/a のコピー.md"
+        );
+    }
+
+    #[test]
+    fn duplicate_refuses_missing_sources_and_folders() {
+        let dir = vault();
+        fs::write(dir.path().join("a.md"), "body").unwrap();
+        assert!(matches!(
+            duplicate(dir.path(), "none.md", ""),
+            Err(VaultError::NotFound(_))
+        ));
+        assert!(matches!(
+            duplicate(dir.path(), "a.md", "none"),
+            Err(VaultError::NotFound(_))
         ));
     }
 

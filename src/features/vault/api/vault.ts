@@ -86,6 +86,11 @@ export function noteRename(from: string, to: string): Promise<void> {
   return call('note_rename', { from, to }, z.null()).then(() => undefined)
 }
 
+/** `from` を `dir`（空なら保管庫の直下）に複製し、作ったメモのパスを返す */
+export function noteDuplicate(from: string, dir: string): Promise<string> {
+  return call('note_duplicate', { from, dir }, z.string())
+}
+
 export function noteTrash(rel: string): Promise<void> {
   return call('note_trash', { rel }, z.null()).then(() => undefined)
 }

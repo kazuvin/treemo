@@ -65,14 +65,19 @@ function ask(
   useUiStore.getState().setPrompt({ title, initial, confirmLabel, submit })
 }
 
-function newNote(): void {
+/** 新しく置く先のフォルダ。サイドバーで選んでいるのがフォルダならその中、メモならその隣 */
+function cursorDir(): string {
   const vault = useVaultStore.getState()
   const cursor = vault.cursor
-  const cursorEntry = vault.entries.find((e) => e.path === cursor)
-  let dir = ''
-  if (useModeStore.getState().focus === 'sidebar' && cursor) {
-    dir = cursorEntry?.kind === 'dir' ? cursor : parentDir(cursor)
+  if (useModeStore.getState().focus !== 'sidebar' || !cursor) {
+    return ''
   }
+  const cursorEntry = vault.entries.find((e) => e.path === cursor)
+  return cursorEntry?.kind === 'dir' ? cursor : parentDir(cursor)
+}
+
+function newNote(): void {
+  const dir = cursorDir()
   ask('新しいメモの名前', dir ? `${dir}/` : '', '作る', (value) => {
     const path = toNotePath(value)
     if (!path) {
@@ -109,6 +114,35 @@ function trashNote(): void {
   ask(`「${displayName(path)}」をゴミ箱に入れますか`, null, 'ゴミ箱に入れる', () => {
     void notes.trashNote(path)
   })
+}
+
+function yankNote(): void {
+  const vault = useVaultStore.getState()
+  const entry = vault.entries.find((e) => e.path === vault.cursor)
+  const status = useStatusStore.getState()
+  if (!entry) {
+    return
+  }
+  if (entry.kind === 'dir') {
+    status.show('フォルダはまだコピーできません')
+    return
+  }
+  if (entry.placeholder) {
+    status.show('まだダウンロードされていないメモはコピーできません')
+    return
+  }
+  vault.setYanked(entry.path)
+  void navigator.clipboard?.writeText(entry.path).catch(() => undefined)
+  status.show(`コピーしました: ${entry.path}`)
+}
+
+function pasteNote(): void {
+  const from = useVaultStore.getState().yanked
+  if (!from) {
+    useStatusStore.getState().show('コピーしたメモがありません（yy でコピー）')
+    return
+  }
+  void notes.duplicateNote(from, cursorDir())
 }
 
 function openOverlay(overlay: 'palette' | 'keys'): void {
@@ -536,6 +570,12 @@ const appCommands: Command[] = [
   sidebarCommand('sidebar.last', '最後の項目へ', ['G'], () =>
     useVaultStore.getState().moveCursor(Infinity),
   ),
+  sidebarCommand('sidebar.newNote', '選んでいるフォルダに新しいメモを作る', ['a'], newNote),
+  sidebarCommand('sidebar.rename', '選んでいるメモの名前を変える', ['r'], () => renameNote(false)),
+  sidebarCommand('sidebar.move', '選んでいるメモを移動する', ['m'], () => renameNote(true)),
+  sidebarCommand('sidebar.trash', '選んでいるメモを削除する（ゴミ箱へ）', ['dd'], trashNote),
+  sidebarCommand('sidebar.yank', '選んでいるメモをコピーする', ['yy'], yankNote),
+  sidebarCommand('sidebar.paste', 'コピーしたメモを複製する', ['p'], pasteNote),
 ]
 
 const themeCommands: Command[] = THEMES.map((theme) => ({

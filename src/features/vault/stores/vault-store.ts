@@ -12,6 +12,8 @@ interface VaultState {
   /** サイドバーで選んでいる行 */
   cursor: string | null
   openPath: string | null
+  /** サイドバーの yy で覚えたメモ。p でこれを複製する */
+  yanked: string | null
   session: SessionSnapshot
   /** 保管庫を開けなかった理由。選び直す画面に出す */
   openError: string | null
@@ -23,6 +25,7 @@ interface VaultState {
   setVault: (vault: VaultInfo | null) => void
   setEntries: (entries: VaultEntry[]) => void
   setOpenPath: (openPath: string | null) => void
+  setYanked: (yanked: string | null) => void
   setSession: (session: SessionSnapshot) => void
   setOpenError: (openError: string | null) => void
   setSwitcherOpen: (switcherOpen: boolean) => void
@@ -42,15 +45,17 @@ export const useVaultStore = create<VaultState>()((set, get) => ({
   expanded: new Set(),
   cursor: null,
   openPath: null,
+  yanked: null,
   session: initialSession,
   openError: null,
   switcherOpen: false,
   tagSearch: null,
   tags: null,
   setVault: (vault) =>
-    set({ vault, entries: [], expanded: new Set(), cursor: null, openPath: null }),
+    set({ vault, entries: [], expanded: new Set(), cursor: null, openPath: null, yanked: null }),
   setEntries: (entries) => set({ entries }),
   setOpenPath: (openPath) => set({ openPath }),
+  setYanked: (yanked) => set({ yanked }),
   setSession: (session) => set({ session }),
   setOpenError: (openError) => set({ openError }),
   setSwitcherOpen: (switcherOpen) => set({ switcherOpen }),

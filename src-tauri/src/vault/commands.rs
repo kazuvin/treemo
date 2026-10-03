@@ -111,6 +111,15 @@ pub async fn note_rename(
 }
 
 #[tauri::command]
+pub async fn note_duplicate(
+    state: State<'_, VaultState>,
+    from: String,
+    dir: String,
+) -> Result<String, VaultError> {
+    fs::duplicate(&state.root()?, &from, &dir)
+}
+
+#[tauri::command]
 pub async fn note_trash(state: State<'_, VaultState>, rel: String) -> Result<(), VaultError> {
     fs::trash(&state.root()?, &rel)
 }

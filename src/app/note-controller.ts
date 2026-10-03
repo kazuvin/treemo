@@ -6,6 +6,7 @@ import { foldedLines, restoreFolds } from '@/features/editor/utils/folds'
 import { minimalChange } from '@/features/editor/utils/minimal-change'
 import {
   noteCreate,
+  noteDuplicate,
   noteRead,
   noteRename,
   noteTrash,
@@ -15,7 +16,7 @@ import {
   VaultCommandError,
 } from '@/features/vault/api/vault'
 import { initialSession, useVaultStore } from '@/features/vault/stores/vault-store'
-import { displayName } from '@/features/vault/utils/file-tree'
+import { displayName, visibleRows } from '@/features/vault/utils/file-tree'
 import { NoteCache } from '@/features/vault/utils/note-cache'
 import { NoteSession } from '@/features/vault/utils/note-session'
 import { allowWhileReading } from '@/lib/reading'
@@ -321,10 +322,35 @@ class NoteController {
           setNoteState(noteKey(vault.root, to), saved)
         }
       }
+      if (useVaultStore.getState().yanked === from) {
+        useVaultStore.getState().setYanked(to)
+      }
       await this.refreshNow()
       if (wasOpen) {
         await this.openNow(to)
+      } else if (useVaultStore.getState().cursor === from) {
+        useVaultStore.getState().reveal(to)
       }
+    })
+  }
+
+  /** 複製したメモは開かず、サイドバーのカーソルだけを移す */
+  duplicateNote(from: string, dir: string): Promise<void> {
+    return this.enqueue(async () => {
+      if (this.session?.path === from) {
+        await this.session.flush()
+      }
+      let path: string
+      try {
+        path = await noteDuplicate(from, dir)
+      } catch (error) {
+        console.error('複製できませんでした', error)
+        useStatusStore.getState().show(`複製できませんでした: ${message(error)}`)
+        return
+      }
+      await this.refreshNow()
+      useVaultStore.getState().reveal(path)
+      useStatusStore.getState().show(`「${displayName(path)}」を作りました`)
     })
   }
 
@@ -335,8 +361,16 @@ class NoteController {
         await this.closeCurrent()
         this.handle?.load('', null)
       }
+      const store = useVaultStore.getState()
+      const rows = visibleRows(store.entries, store.expanded)
+      const index = rows.findIndex((row) => row.path === path)
+      // 消した行にカーソルが残ると j / k が一覧の先頭からやり直しになるので、隣の行へ移す
+      const neighbor = rows[index + 1]?.path ?? rows[index - 1]?.path ?? null
       try {
         await noteTrash(path)
+        if (useVaultStore.getState().cursor === path) {
+          useVaultStore.getState().setCursor(neighbor)
+        }
         useStatusStore.getState().show('ゴミ箱に入れました')
       } catch (error) {
         console.error('ゴミ箱に入れられませんでした', error)

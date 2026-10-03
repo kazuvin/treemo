@@ -25,6 +25,7 @@ pub fn run() {
             vault::commands::note_write,
             vault::commands::note_create,
             vault::commands::note_rename,
+            vault::commands::note_duplicate,
             vault::commands::note_trash,
             app_state::app_state_read,
             app_state::app_state_write,

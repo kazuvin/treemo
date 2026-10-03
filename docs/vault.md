@@ -42,6 +42,7 @@
 | `note_read(rel)` | 中身と、変更を見分けるためのハッシュ（blake3）を返す |
 | `note_write(rel, content, base_hash)` | `base_hash` が今のファイルと合えば書く。合わなければ衝突（`currentHash` 付き）として返す |
 | `note_create(rel)` / `note_rename(from, to)` | 作る / 名前を変える・移す。行き先のフォルダが無ければ作る。すでにあれば上書きせず失敗にする |
+| `note_duplicate(from, dir)` | `dir`（空なら直下）に `名前 のコピー.md` として複製し、作ったパスを返す。名前がふさがっていれば `(2)` `(3)` と番号を進める |
 | `note_trash(rel)` | ゴミ箱に送る |
 | `app_state_read()` / `app_state_write(json)` | アプリの状態（保管庫の外）を読む / 置き換えで書く |
 
