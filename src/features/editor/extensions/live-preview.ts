@@ -11,6 +11,7 @@ import {
 import { allowWhileReading, isReading } from '@/lib/reading'
 import { toggleTask } from '../utils/list-ops'
 import { frontMatterField } from './front-matter'
+import { imageWidget } from './image'
 
 /** 記号を隠すだけで中身は残す。カーソル行では付けない */
 const HIDDEN_MARKS = new Set(['EmphasisMark', 'StrikethroughMark', 'LinkMark', 'QuoteMark'])
@@ -155,6 +156,19 @@ function build(view: EditorView): DecorationSet {
             lineClass(state.doc.line(n).from, 'cm-lp-quote')
           }
           return
+        }
+        if (name === 'Image' && !isActive(node.from)) {
+          const marks = node.node.getChildren('LinkMark')
+          const url = node.node.getChild('URL')
+          if (url && marks.length >= 2) {
+            const alt = state.doc.sliceString(
+              marks[0]?.to ?? node.from,
+              marks[1]?.from ?? node.from,
+            )
+            const widget = imageWidget(view, state.doc.sliceString(url.from, url.to), alt)
+            decorations.push(Decoration.replace({ widget }).range(node.from, node.to))
+            return false
+          }
         }
         const inlineClass = INLINE_CLASSES[name]
         if (inlineClass && node.to > node.from) {

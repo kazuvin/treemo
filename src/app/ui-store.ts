@@ -1,4 +1,9 @@
 import { create } from 'zustand'
+import {
+  type AttachmentLocation,
+  DEFAULT_ATTACHMENT_FOLDER,
+  DEFAULT_ATTACHMENT_LOCATION,
+} from '@/features/vault/utils/attachment'
 import { type BgmChoice, DEFAULT_BGM, DEFAULT_BGM_VOLUME } from '@/lib/ambience'
 import { DEFAULT_FONT_FAMILY, type FontFamilyId } from '@/lib/font-family'
 import { DEFAULT_FONT_SIZE } from '@/lib/font-size'
@@ -23,6 +28,10 @@ interface UiState {
   bgm: BgmChoice
   /** BGM の音量（%） */
   bgmVolume: number
+  /** 貼り付けた画像を置く場所（Obsidian の「新しい添付ファイルの場所」） */
+  attachmentLocation: AttachmentLocation
+  /** 「指定したフォルダ」と「サブフォルダ」のフォルダ名 */
+  attachmentFolder: string
   /** 閲覧モード（本文を書き換えず、どの行も装飾して見せる） */
   reading: boolean
   settingsOpen: boolean
@@ -33,6 +42,8 @@ interface UiState {
   setFontFamily: (fontFamily: FontFamilyId) => void
   setBgm: (bgm: BgmChoice) => void
   setBgmVolume: (bgmVolume: number) => void
+  setAttachmentLocation: (attachmentLocation: AttachmentLocation) => void
+  setAttachmentFolder: (attachmentFolder: string) => void
   setReading: (reading: boolean) => void
   setSettingsOpen: (settingsOpen: boolean) => void
   setPrompt: (prompt: PromptRequest | null) => void
@@ -45,6 +56,8 @@ export const useUiStore = create<UiState>()((set) => ({
   fontFamily: DEFAULT_FONT_FAMILY,
   bgm: DEFAULT_BGM,
   bgmVolume: DEFAULT_BGM_VOLUME,
+  attachmentLocation: DEFAULT_ATTACHMENT_LOCATION,
+  attachmentFolder: DEFAULT_ATTACHMENT_FOLDER,
   reading: false,
   settingsOpen: false,
   prompt: null,
@@ -54,6 +67,8 @@ export const useUiStore = create<UiState>()((set) => ({
   setFontFamily: (fontFamily) => set({ fontFamily }),
   setBgm: (bgm) => set({ bgm }),
   setBgmVolume: (bgmVolume) => set({ bgmVolume }),
+  setAttachmentLocation: (attachmentLocation) => set({ attachmentLocation }),
+  setAttachmentFolder: (attachmentFolder) => set({ attachmentFolder }),
   setReading: (reading) => set({ reading }),
   setSettingsOpen: (settingsOpen) => set({ settingsOpen }),
   setPrompt: (prompt) => set({ prompt }),

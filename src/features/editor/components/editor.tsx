@@ -4,6 +4,7 @@ import { useEffect, useRef } from 'react'
 import type { VimMode } from '@/stores/mode-store'
 import { baseExtensions } from '../extensions/base'
 import { bodyStart, frontMatter } from '../extensions/front-matter'
+import { images } from '../extensions/image'
 import { livePreview } from '../extensions/live-preview'
 import { noteTitle } from '../extensions/note-title'
 import { markdownTable } from '../extensions/table'
@@ -41,6 +42,7 @@ export function Editor({ extensions, onReady, onModeChange }: EditorProps) {
       ...baseExtensions(),
       frontMatter(),
       livePreview(),
+      images(),
       markdownTable(),
       ...extensions,
     ]

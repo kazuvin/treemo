@@ -27,6 +27,7 @@ pub fn run() {
             vault::commands::note_rename,
             vault::commands::note_duplicate,
             vault::commands::note_trash,
+            vault::commands::attachment_write,
             app_state::app_state_read,
             app_state::app_state_write,
             app_state::keybindings_read,

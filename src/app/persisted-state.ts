@@ -1,6 +1,11 @@
 import { invoke } from '@tauri-apps/api/core'
 import { z } from 'zod'
 import { vimConfigSchema } from '@/features/editor/utils/vim-config'
+import {
+  ATTACHMENT_LOCATIONS,
+  DEFAULT_ATTACHMENT_FOLDER,
+  DEFAULT_ATTACHMENT_LOCATION,
+} from '@/features/vault/utils/attachment'
 import { DEFAULT_BGM, DEFAULT_BGM_VOLUME } from '@/lib/ambience'
 import { DEFAULT_FONT_FAMILY } from '@/lib/font-family'
 import { DEFAULT_FONT_SIZE } from '@/lib/font-size'
@@ -30,6 +35,8 @@ const schema = z.object({
   // 知らない音は ambience.ts の sanitizeBgm が止める。音量は sanitizeBgmVolume が寄せる
   bgm: z.string().catch(DEFAULT_BGM),
   bgmVolume: z.number().catch(DEFAULT_BGM_VOLUME),
+  attachmentLocation: z.enum(ATTACHMENT_LOCATIONS).catch(DEFAULT_ATTACHMENT_LOCATION),
+  attachmentFolder: z.string().catch(DEFAULT_ATTACHMENT_FOLDER),
   preferFullscreen: z.boolean().default(false),
   showKeyGuide: z.boolean().default(true),
   // 選べない倍率は diagram-store の setZoom が近いものに寄せる

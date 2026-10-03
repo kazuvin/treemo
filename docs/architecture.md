@@ -92,6 +92,7 @@ Treemo をどう組み立てるか。何を作るかは [要件定義](requireme
 | コマンドの登録、キーの割り当て | `features/commands/` | 下の「コマンド」 |
 | キーの割り当ての上書き | Application Support の `keybindings.json` → Rust の `keybindings_read` / `keybindings_write`。`src/app/commands.ts` が既定の登録に重ねる | 手で書いても設定画面から書いてもよい。アプリが書くのは既定との差分だけ（[キー操作](keybindings.md) の「割り当てを変える」） |
 | サイドバーの位置（左右）、設定画面を開いているか | `src/app/ui-store.ts`（位置はアプリの状態として保存） | レイアウトと、向きで指すキー（`<C-w>h` など）の行き先を決める |
+| 貼り付けた画像の置き場所とフォルダ名 | `src/app/ui-store.ts` + アプリの状態として保存 | 設定画面が書き、`src/app/attachments.ts` が貼り付けのときに読む |
 | Vim の設定（割り当て、クリップボード） | `features/editor/utils/vim-config.ts` の形で、アプリの状態に保存 | Vim の割り当ては Vim の中（codemirror-vim の全体の表）にしか置けないので、設定を正本にし、`applyVimConfig` で流し直す |
 
 ## コマンド
@@ -149,7 +150,8 @@ const extensions = [treeExtension((view) => notes.isActiveView(view)), pane.exte
   領域の並びは `src/app/pane-store.ts` に写す。
 
 - `features/editor` は、外から CodeMirror の拡張を受け取れるようにだけしておく。
-  ツリーを知らない。
+  ツリーを知らない。保管庫も知らないので、画像の URL を作る関数と、貼った画像を書く関数は
+  app が Facet（`imageResolver` / `imagePasteHandler`）で渡す（`src/app/attachments.ts`）。
 - `features/diagram` は、CodeMirror の拡張を返す関数を公開する。エディタの React
   コンポーネントを知らない。
 
@@ -166,4 +168,4 @@ const extensions = [treeExtension((view) => notes.isActiveView(view)), pane.exte
 | フロントマター | `yaml` | YAML 1.2 を正しく読める。読むだけに使い、書き戻しはしない（書式を保つため） |
 | 検証 | `zod` | Rust から来た値とアプリの状態の JSON を、型と一緒に確かめる |
 | Tauri | `@tauri-apps/api` `@tauri-apps/plugin-dialog` | IPC とイベント、保管庫を選ぶダイアログ |
-| Rust | `notify`（監視、macOS では FSEvents） `trash`（ゴミ箱） `thiserror` `serde` `blake3`（ハッシュ） `tauri-plugin-dialog` / 開発用に `tempfile` | |
+| Rust | `notify`（監視、macOS では FSEvents） `trash`（ゴミ箱） `thiserror` `serde` `blake3`（ハッシュ） `tauri-plugin-dialog` `percent-encoding`（画像のパスのヘッダーを読む） / 開発用に `tempfile` | |

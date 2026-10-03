@@ -18,6 +18,7 @@ import { treeExtension } from '@/features/diagram/extensions/tree-extension'
 import { useDiagramStore } from '@/features/diagram/stores/diagram-store'
 import { Editor, type EditorHandle } from '@/features/editor/components/editor'
 import { tagClickHandler } from '@/features/editor/extensions/front-matter'
+import { imagePasteHandler, imageResolver } from '@/features/editor/extensions/image'
 import { noteTitleClickHandler } from '@/features/editor/extensions/note-title'
 import { applyVimConfig, setExHandlers } from '@/features/editor/extensions/vim-bridge'
 import { onVaultChanged } from '@/features/vault/api/vault'
@@ -38,6 +39,7 @@ import { applyTheme, resolveTheme, sanitizeCustomThemes } from '@/lib/theme'
 import { useModeStore, type VimMode } from '@/stores/mode-store'
 import { useStatusStore } from '@/stores/status-store'
 import { useThemeStore } from '@/stores/theme-store'
+import { pasteImages, resolveImageUrl } from './attachments'
 import {
   loadKeybindings,
   openSettings,
@@ -70,6 +72,8 @@ function extensionsFor(key: number): readonly Extension[] {
       pane.extension,
       tagClickHandler.of((tag) => void openTagSearch(tag)),
       noteTitleClickHandler.of(() => renameNote(false, pane.openPath)),
+      imageResolver.of((src) => resolveImageUrl(pane.openPath, src)),
+      imagePasteHandler.of((files) => pasteImages(pane, files)),
     ]
     paneExtensions.set(key, extensions)
   }
@@ -169,6 +173,8 @@ async function boot(): Promise<void> {
   applyFontFamily(useUiStore.getState().fontFamily)
   useUiStore.getState().setBgm(sanitizeBgm(state.bgm))
   useUiStore.getState().setBgmVolume(sanitizeBgmVolume(state.bgmVolume))
+  useUiStore.getState().setAttachmentLocation(state.attachmentLocation)
+  useUiStore.getState().setAttachmentFolder(state.attachmentFolder)
   setAmbienceVolume(useUiStore.getState().bgmVolume)
   useDiagramStore.getState().setPreferFullscreen(state.preferFullscreen)
   useDiagramStore.getState().setShowKeyGuide(state.showKeyGuide)
@@ -226,7 +232,9 @@ async function boot(): Promise<void> {
       ui.fontSize !== prev.fontSize ||
       ui.fontFamily !== prev.fontFamily ||
       ui.bgm !== prev.bgm ||
-      ui.bgmVolume !== prev.bgmVolume
+      ui.bgmVolume !== prev.bgmVolume ||
+      ui.attachmentLocation !== prev.attachmentLocation ||
+      ui.attachmentFolder !== prev.attachmentFolder
     ) {
       updatePersistedState((s) => ({
         ...s,
@@ -237,6 +245,8 @@ async function boot(): Promise<void> {
         fontFamily: ui.fontFamily,
         bgm: ui.bgm,
         bgmVolume: ui.bgmVolume,
+        attachmentLocation: ui.attachmentLocation,
+        attachmentFolder: ui.attachmentFolder,
       }))
     }
   })

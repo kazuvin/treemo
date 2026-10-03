@@ -1,4 +1,4 @@
-import { invoke } from '@tauri-apps/api/core'
+import { convertFileSrc, invoke } from '@tauri-apps/api/core'
 import { listen } from '@tauri-apps/api/event'
 import { z } from 'zod'
 
@@ -20,10 +20,15 @@ export class VaultCommandError extends Error {
   }
 }
 
-async function call<T>(command: string, args: Record<string, unknown>, schema: z.ZodType<T>) {
+async function call<T>(
+  command: string,
+  args: Parameters<typeof invoke>[1],
+  schema: z.ZodType<T>,
+  options?: Parameters<typeof invoke>[2],
+) {
   let raw: unknown
   try {
-    raw = await invoke(command, args)
+    raw = await invoke(command, args, options)
   } catch (error) {
     const parsed = errorSchema.safeParse(error)
     if (parsed.success) {
@@ -93,6 +98,21 @@ export function noteDuplicate(from: string, dir: string): Promise<string> {
 
 export function noteTrash(rel: string): Promise<void> {
   return call('note_trash', { rel }, z.null()).then(() => undefined)
+}
+
+/**
+ * 貼り付けた画像を `rel` に書き、書いたパスを返す。名前がふさがっていれば番号を足した名前になる。
+ * 画像は JSON にせず本文のまま送る
+ */
+export function attachmentWrite(rel: string, bytes: Uint8Array): Promise<string> {
+  return call('attachment_write', bytes, z.string(), {
+    headers: { 'x-treemo-path': encodeURIComponent(rel) },
+  })
+}
+
+/** 保管庫の中のファイルを `<img>` で読む URL（asset プロトコル。Rust が保管庫の中だけを許す） */
+export function vaultFileUrl(root: string, rel: string): string {
+  return convertFileSrc(`${root}/${rel}`)
 }
 
 const changedSchema = z.object({ paths: z.array(z.string()) })

@@ -113,3 +113,10 @@ MVP の外で足したもの。読む: [キー操作](keybindings.md) の「本�
 
 - [x] **8-1 本文を左右に分ける。** F-EDIT-9。`<C-w>v` / `:vs` / `<C-w>q` / `⌘1` `⌘2`。
   `NoteController` を領域ごとのエディタとセッションに分けた。
+
+## M9 画像
+
+MVP の外で足したもの。読む: [要件定義](requirements.md) の F-EDIT-10、[保管庫と iCloud](vault.md) の「画像」
+
+- [x] **9-1 画像の貼り付けと表示。** F-EDIT-10。Rust の `attachment_write`、
+  `features/editor/extensions/image.ts`、`src/app/attachments.ts`。

@@ -5,6 +5,12 @@ import { Select } from '@/components/ui/select'
 import { KeybindingEditor } from '@/features/commands/components/keybinding-editor'
 import { useDiagramStore } from '@/features/diagram/stores/diagram-store'
 import { useVaultStore } from '@/features/vault/stores/vault-store'
+import {
+  ATTACHMENT_LOCATIONS,
+  attachmentLocationLabel,
+  DEFAULT_ATTACHMENT_FOLDER,
+  sanitizeFolder,
+} from '@/features/vault/utils/attachment'
 import { BGM_CHOICES, BGM_VOLUMES, bgmChoiceLabel, DEFAULT_BGM_VOLUME } from '@/lib/ambience'
 import { cn } from '@/lib/cn'
 import { DEFAULT_FONT_SIZE, FONT_SIZES } from '@/lib/font-size'
@@ -29,6 +35,49 @@ interface Item {
   dropdown?: boolean
   /** Enter で走らせる操作と、その説明 */
   action?: { label: string; run: () => void }
+  /** Enter で入力欄に入り、もう一度 Enter で決める。Esc で入力を捨てる */
+  text?: { value: string; commit: (value: string) => void }
+}
+
+function TextSetting({
+  label,
+  text,
+  inputRef,
+  onDone,
+}: {
+  label: string
+  text: NonNullable<Item['text']>
+  inputRef: (input: HTMLInputElement | null) => void
+  onDone: () => void
+}) {
+  const [draft, setDraft] = useState(text.value)
+  return (
+    <input
+      ref={inputRef}
+      aria-label={label}
+      value={draft}
+      tabIndex={-1}
+      onChange={(event) => setDraft(event.target.value)}
+      onFocus={() => setDraft(text.value)}
+      onBlur={() => setDraft(text.value)}
+      onKeyDown={(event) => {
+        // 入力中の j k h l を設定の一覧の移動に取られないようにする
+        event.stopPropagation()
+        if (event.nativeEvent.isComposing) {
+          return
+        }
+        if (event.key === 'Enter') {
+          event.preventDefault()
+          text.commit(draft)
+          onDone()
+        } else if (event.key === 'Escape') {
+          event.preventDefault()
+          onDone()
+        }
+      }}
+      className="h-7 w-56 rounded-sm border border-input bg-background px-2 text-sm outline-none focus-visible:border-selected-border"
+    />
+  )
 }
 
 function cycle(options: NonNullable<Item['options']>, delta: 1 | -1): void {
@@ -40,6 +89,7 @@ function GeneralSettings({ onClose }: { onClose: () => void }) {
   const [cursor, setCursor] = useState(0)
   const [openSelect, setOpenSelect] = useState<string | null>(null)
   const rootRef = useRef<HTMLDivElement>(null)
+  const textInputs = useRef(new Map<string, HTMLInputElement>())
   const sidebarSide = useUiStore((s) => s.sidebarSide)
   const setSidebarSide = useUiStore((s) => s.setSidebarSide)
   const fontSize = useUiStore((s) => s.fontSize)
@@ -50,6 +100,10 @@ function GeneralSettings({ onClose }: { onClose: () => void }) {
   const setBgmVolume = useUiStore((s) => s.setBgmVolume)
   const showKeyGuide = useDiagramStore((s) => s.showKeyGuide)
   const setShowKeyGuide = useDiagramStore((s) => s.setShowKeyGuide)
+  const attachmentLocation = useUiStore((s) => s.attachmentLocation)
+  const setAttachmentLocation = useUiStore((s) => s.setAttachmentLocation)
+  const attachmentFolder = useUiStore((s) => s.attachmentFolder)
+  const setAttachmentFolder = useUiStore((s) => s.setAttachmentFolder)
   const vault = useVaultStore((s) => s.vault)
 
   useEffect(() => {
@@ -100,6 +154,30 @@ function GeneralSettings({ onClose }: { onClose: () => void }) {
         select: () => setShowKeyGuide(show),
       })),
     },
+    {
+      label: '貼り付けた画像の置き場所',
+      dropdown: true,
+      options: ATTACHMENT_LOCATIONS.map((location) => ({
+        label: attachmentLocationLabel(location),
+        selected: attachmentLocation === location,
+        select: () => setAttachmentLocation(location),
+      })),
+    },
+    ...(attachmentLocation === 'folder' || attachmentLocation === 'subfolder'
+      ? [
+          {
+            label:
+              attachmentLocation === 'folder'
+                ? '画像を置くフォルダ（保管庫からのパス）'
+                : '画像を置くサブフォルダの名前',
+            text: {
+              value: attachmentFolder,
+              commit: (value: string) =>
+                setAttachmentFolder(sanitizeFolder(value) || DEFAULT_ATTACHMENT_FOLDER),
+            },
+          },
+        ]
+      : []),
     {
       label: '保管庫',
       action: {
@@ -157,6 +235,8 @@ function GeneralSettings({ onClose }: { onClose: () => void }) {
           setOpenSelect(item.label)
         } else if (item.options) {
           cycle(item.options, 1)
+        } else if (item.text) {
+          textInputs.current.get(item.label)?.focus()
         } else {
           item.action?.run()
         }
@@ -225,6 +305,20 @@ function GeneralSettings({ onClose }: { onClose: () => void }) {
                   </button>
                 ))}
               </span>
+            )}
+            {item.text && (
+              <TextSetting
+                label={item.label}
+                text={item.text}
+                inputRef={(input) => {
+                  if (input) {
+                    textInputs.current.set(item.label, input)
+                  } else {
+                    textInputs.current.delete(item.label)
+                  }
+                }}
+                onDone={() => rootRef.current?.focus()}
+              />
             )}
             {item.action && (
               <button

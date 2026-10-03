@@ -159,7 +159,6 @@ React 19 + React Compiler（Vite）。`.oxlintrc.json` が機械的に落とす�
 **日付を組み立てる入口は `src/lib/date.ts` だけ。** 生の `new Date()` と `Date.now()` は
 自作の Oxlint プラグイン（`tools/oxlint-plugin.mjs` の `treemo/no-raw-date`）で lint に落とす。
 
-- `src/lib/date.ts` はまだ無い。最初に日付が要ったとき（ファイルの更新時刻の表示など）に作る。
 - 例外は `.oxlintrc.json` の `overrides` で外してある。`lib/date.ts` 本体と、テスト。
 - 個別に外したい行には `// oxlint-disable-next-line treemo/no-raw-date -- 理由` を置く。
 

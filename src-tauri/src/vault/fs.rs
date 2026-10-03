@@ -10,6 +10,10 @@ use super::error::VaultError;
 pub type Result<T> = std::result::Result<T, VaultError>;
 
 const NOTE_EXT: &str = "md";
+/// 貼り付けで保管庫に置ける画像。`src/features/vault/utils/attachment.ts` と同じにする
+const IMAGE_EXTS: &[&str] = &[
+    "png", "jpg", "jpeg", "gif", "webp", "svg", "bmp", "avif", "tif", "tiff",
+];
 const ICLOUD_PLACEHOLDER_EXT: &str = ".icloud";
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
@@ -406,6 +410,56 @@ pub fn duplicate(root: &Path, from: &str, dir: &str) -> Result<String> {
     Err(VaultError::AlreadyExists(copy_name(&stem, 1000)))
 }
 
+/// 添付の候補の名前。Obsidian と同じく、ふさがっていれば `名前 1.png` `名前 2.png` と番号を足す
+fn numbered_name(stem: &str, ext: &str, n: usize) -> String {
+    if n == 0 {
+        format!("{stem}.{ext}")
+    } else {
+        format!("{stem} {n}.{ext}")
+    }
+}
+
+/// 画像を `rel` に書き、書いたファイルの相対パスを返す。すでにあれば上書きせず番号を足す
+pub fn write_attachment(root: &Path, rel: &str, bytes: &[u8]) -> Result<String> {
+    let path = resolve(root, rel)?;
+    let invalid = || VaultError::InvalidPath(rel.to_owned());
+    let ext = path
+        .extension()
+        .and_then(|e| e.to_str())
+        .filter(|e| IMAGE_EXTS.contains(&e.to_ascii_lowercase().as_str()))
+        .ok_or_else(invalid)?;
+    let stem = path
+        .file_stem()
+        .and_then(|s| s.to_str())
+        .ok_or_else(invalid)?;
+    let (dir_rel, _) = rel.rsplit_once('/').unwrap_or(("", rel));
+    let dir = path.parent().ok_or_else(invalid)?;
+    fs::create_dir_all(dir)?;
+    for n in 0..1000 {
+        let name = numbered_name(stem, ext, n);
+        let dst = dir.join(&name);
+        let mut file = match fs::OpenOptions::new()
+            .write(true)
+            .create_new(true)
+            .open(&dst)
+        {
+            Ok(file) => file,
+            Err(e) if e.kind() == std::io::ErrorKind::AlreadyExists => continue,
+            Err(e) => return Err(e.into()),
+        };
+        if let Err(e) = file.write_all(bytes).and_then(|()| file.sync_all()) {
+            let _ = fs::remove_file(&dst);
+            return Err(e.into());
+        }
+        return Ok(if dir_rel.is_empty() {
+            name
+        } else {
+            format!("{dir_rel}/{name}")
+        });
+    }
+    Err(VaultError::AlreadyExists(rel.to_owned()))
+}
+
 pub fn trash(root: &Path, rel: &str) -> Result<()> {
     let path = resolve_note(root, rel)?;
     if !path.exists() {
@@ -493,6 +547,42 @@ mod tests {
         assert!(matches!(
             duplicate(dir.path(), "a.md", "none"),
             Err(VaultError::NotFound(_))
+        ));
+    }
+
+    #[test]
+    fn write_attachment_numbers_names_that_are_taken() {
+        let dir = vault();
+        assert_eq!(
+            write_attachment(dir.path(), "img/a b.png", b"1").unwrap(),
+            "img/a b.png"
+        );
+        assert_eq!(
+            write_attachment(dir.path(), "img/a b.png", b"2").unwrap(),
+            "img/a b 1.png"
+        );
+        assert_eq!(fs::read(dir.path().join("img/a b.png")).unwrap(), b"1");
+        assert_eq!(fs::read(dir.path().join("img/a b 1.png")).unwrap(), b"2");
+        assert_eq!(
+            write_attachment(dir.path(), "c.PNG", b"3").unwrap(),
+            "c.PNG"
+        );
+    }
+
+    #[test]
+    fn write_attachment_refuses_non_images_and_outside_paths() {
+        let dir = vault();
+        assert!(matches!(
+            write_attachment(dir.path(), "a.md", b"x"),
+            Err(VaultError::InvalidPath(_))
+        ));
+        assert!(matches!(
+            write_attachment(dir.path(), "a", b"x"),
+            Err(VaultError::InvalidPath(_))
+        ));
+        assert!(matches!(
+            write_attachment(dir.path(), "../a.png", b"x"),
+            Err(VaultError::OutsideVault(_))
         ));
     }
 
