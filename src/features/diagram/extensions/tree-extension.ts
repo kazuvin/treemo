@@ -169,8 +169,10 @@ const blockTheme = [
     '&.cm-on-tree-block .cm-fat-cursor, &.cm-on-tree-block .cm-cursor': {
       visibility: 'hidden',
     },
-    // 本文の行は左右に余白を持つ（.cm-line）。絵の幅を本文の幅にそろえる
-    '.cm-tree-block': { padding: '0 var(--spacing-edge-h)' },
+    // 本文の行は左右に余白を持つ（.cm-line）。絵の幅を本文の幅にそろえる。
+    // flow-root は中の枠の上下の margin を外へはみ出させないため。はみ出すと CodeMirror が
+    // 測るブロックの高さが足りず、下の行の位置がずれて gj / gk やクリックが別の行に当たる
+    '.cm-tree-block': { display: 'flow-root', padding: '0 var(--spacing-edge-h)' },
   }),
 ]
 
