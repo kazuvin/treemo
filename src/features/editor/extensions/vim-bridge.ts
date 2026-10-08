@@ -139,6 +139,14 @@ function mapBuiltins(): void {
   }
   Vim.mapCommand(']]', 'motion', 'treemoHeading', { forward: true, toJumplist: true }, {})
   Vim.mapCommand('[[', 'motion', 'treemoHeading', { forward: false, toJumplist: true }, {})
+  // mappings の既定値に置かないのは、既定値ごと保存したアプリの状態には後から足せないため。
+  // operatorPending には置かないので、dj は行ごとのまま
+  for (const context of ['normal', 'visual']) {
+    Vim.noremap('j', 'gj', context)
+    Vim.noremap('k', 'gk', context)
+    Vim.noremap('gj', 'j', context)
+    Vim.noremap('gk', 'k', context)
+  }
 }
 
 /**

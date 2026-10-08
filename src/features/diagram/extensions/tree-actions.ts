@@ -3,7 +3,7 @@
  * （docs/architecture.md の「1 本の文書、1 本の履歴」）。
  */
 import { isolateHistory, redo, undo } from '@codemirror/commands'
-import type { EditorState, TransactionSpec } from '@codemirror/state'
+import { EditorSelection, type EditorState, type TransactionSpec } from '@codemirror/state'
 import type { EditorView } from '@codemirror/view'
 import { getCM, Vim } from '@replit/codemirror-vim'
 import { isReading } from '@/lib/reading'
@@ -597,22 +597,34 @@ export function restoreTreeFolds(view: EditorView, folds: Readonly<Record<string
   }
 }
 
-/** カーソルの次（前）の行から始まる（で終わる）ブロック */
-export function adjacentBlock(state: EditorState, direction: 'up' | 'down'): ParsedBlock | null {
+/**
+ * カーソルの次（前）の行から始まる（で終わる）ブロック。j / k は見た目の行で動くので、
+ * 折り返した行では最後（前なら最初）の見た目の行にいるときだけ返す
+ */
+export function adjacentBlock(view: EditorView, direction: 'up' | 'down'): ParsedBlock | null {
+  const { state } = view
   if (isReading(state) || blockAtCursor(state)) {
     return null
   }
-  const line = state.doc.lineAt(state.selection.main.head)
+  const head = state.selection.main.head
+  const line = state.doc.lineAt(head)
   const blocks = state.field(blocksField)
-  if (direction === 'down') {
-    return blocks.find((b) => b.from === line.to + 1) ?? null
+  const block =
+    direction === 'down'
+      ? blocks.find((b) => b.from === line.to + 1)
+      : blocks.find((b) => b.to === line.from - 1)
+  if (!block) {
+    return null
   }
-  return blocks.find((b) => b.to === line.from - 1) ?? null
+  // assoc を 1 にするのは codemirror-vim の gj / gk に合わせるため。折り返しの境目の文字を
+  // 下の見た目の行の頭として扱う
+  const moved = view.moveVertically(EditorSelection.cursor(head, 1), direction === 'down').head
+  return moved < line.from || moved > line.to ? block : null
 }
 
 /** Vim の j / k はブロックの絵の中に入れないので、隣の行からはここでブロックに乗せる */
 export function stepOntoBlock(view: EditorView, direction: 'up' | 'down'): boolean {
-  const block = adjacentBlock(view.state, direction)
+  const block = adjacentBlock(view, direction)
   if (!block) {
     return false
   }

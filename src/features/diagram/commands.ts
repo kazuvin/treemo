@@ -107,7 +107,7 @@ export const diagramCommands: Command[] = [
     id: direction === 'down' ? 'diagram.stepDown' : 'diagram.stepUp',
     title: direction === 'down' ? '下のツリーブロックへ' : '上のツリーブロックへ',
     keys: [{ scope: 'normal', sequence: direction === 'down' ? 'j' : 'k' }],
-    when: ({ view }) => view !== null && adjacentBlock(view.state, direction) !== null,
+    when: ({ view }) => view !== null && adjacentBlock(view, direction) !== null,
     run: ({ view }) => {
       if (view) {
         stepOntoBlock(view, direction)
