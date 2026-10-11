@@ -10,6 +10,7 @@ import {
 } from '@codemirror/view'
 import { allowWhileReading, isReading } from '@/lib/reading'
 import { toggleTask } from '../utils/list-ops'
+import { inComment } from './comment'
 import { frontMatterField } from './front-matter'
 import { imageWidget } from './image'
 
@@ -127,6 +128,9 @@ function build(view: EditorView): DecorationSet {
       enter: (node) => {
         if (node.from < bodyFrom) {
           return
+        }
+        if (inComment(state, node.from, node.to)) {
+          return false
         }
         const name = node.name
         const heading = /^ATXHeading(\d)$/.exec(name)

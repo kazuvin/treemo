@@ -3,6 +3,7 @@ import { EditorView } from '@codemirror/view'
 import { useEffect, useRef } from 'react'
 import type { VimMode } from '@/stores/mode-store'
 import { baseExtensions } from '../extensions/base'
+import { commentSyntax } from '../extensions/comment'
 import { bodyStart, frontMatter } from '../extensions/front-matter'
 import { images } from '../extensions/image'
 import { livePreview } from '../extensions/live-preview'
@@ -42,6 +43,7 @@ export function Editor({ extensions, onReady, onModeChange }: EditorProps) {
       ...baseExtensions(),
       frontMatter(),
       livePreview(),
+      commentSyntax(),
       images(),
       markdownTable(),
       ...extensions,

@@ -120,3 +120,10 @@ MVP の外で足したもの。読む: [要件定義](requirements.md) の F-EDI
 
 - [x] **9-1 画像の貼り付けと表示。** F-EDIT-10。Rust の `attachment_write`、
   `features/editor/extensions/image.ts`、`src/app/attachments.ts`。
+
+## M10 コメント
+
+MVP の外で足したもの。読む: [要件定義](requirements.md) の F-EDIT-11
+
+- [x] **10-1 コメント。** F-EDIT-11。`features/editor/utils/comment.ts`、
+  `features/editor/extensions/comment.ts`、`<Space>c`。

@@ -1,6 +1,7 @@
 import type { EditorView } from '@codemirror/view'
 import type { Command } from '@/lib/command'
-import { feedVimKeys } from './extensions/vim-bridge'
+import { feedVimKeys, vimModeOf } from './extensions/vim-bridge'
+import { toggleComment } from './utils/comment'
 import { indentItem, type LineEdit, moveItem, outdentItem, toggleTask } from './utils/list-ops'
 
 function lines(view: EditorView): string[] {
@@ -64,6 +65,26 @@ export const editorCommands: Command[] = [
       if (next !== null) {
         view.dispatch({ changes: { from: line.from, to: line.to, insert: next } })
       }
+    },
+  },
+  {
+    id: 'editor.toggleComment',
+    title: 'コメントを切り替える',
+    keys: [{ scope: 'normal', sequence: '<Space>c' }],
+    when: (ctx) => ctx.view !== null,
+    run: ({ view }) => {
+      if (!view) {
+        return
+      }
+      const { from, to, head } = view.state.selection.main
+      // NORMAL の Vim は 1 文字を選んだ形でカーソルを持つことがあるので、選択は VISUAL のときだけ見る
+      const visual = vimModeOf(view) === 'VISUAL'
+      const { changes, cursor } = toggleComment(
+        view.state.doc.toString(),
+        visual ? from : head,
+        visual ? to : head,
+      )
+      view.dispatch({ changes, selection: { anchor: cursor }, userEvent: 'input.comment' })
     },
   },
   lineCommand('editor.indentItem', 'リスト項目を字下げする', '<M-l>', indentItem),
