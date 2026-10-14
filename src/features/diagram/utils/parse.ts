@@ -1,6 +1,7 @@
-import type { StrayLine, TreeBlock, TreeNode } from '../types/tree'
+import type { DiagramKind, StrayLine, TreeBlock, TreeNode } from '../types/tree'
+import { normalizeTChart } from './t-chart'
 
-const OPEN_FENCE = /^(`{3,}|~{3,})tree(\s.*)?$/
+const OPEN_FENCE = /^(`{3,}|~{3,})(tree|tchart)(\s.*)?$/
 const NODE_LINE = /^(\s*)[-*+](?:( +)(.*))?$/
 const TAB_WIDTH = 4
 
@@ -94,8 +95,15 @@ export function parseTreeBlock(source: string): TreeBlock | null {
     return null
   }
   const fence = open[1] ?? '```'
-  const info = open[2] ?? ''
+  const kind: DiagramKind = open[2] === 'tchart' ? 'tchart' : 'tree'
+  const info = open[3] ?? ''
   const closing = lines.at(-1) ?? fence
-  const { roots, strayLines } = parseNodes(lines.slice(1, -1), 1)
-  return { fence, info, closing, roots, strayLines }
+  const parsed = parseNodes(lines.slice(1, -1), 1)
+  if (kind === 'tree') {
+    return { kind, fence, info, closing, ...parsed }
+  }
+  const t = normalizeTChart(parsed.roots, lines)
+  assignIds(t.roots, '')
+  const strayLines = [...parsed.strayLines, ...t.strayLines].sort((a, b) => a.line - b.line)
+  return { kind, fence, info, closing, roots: t.roots, strayLines }
 }

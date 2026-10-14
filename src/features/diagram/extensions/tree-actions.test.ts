@@ -22,6 +22,7 @@ import {
   paste,
   searchInDiagram,
   selectLastLeaf,
+  setAllFolds,
   swap,
   toggleDirection,
   toggleFold,
@@ -353,5 +354,159 @@ describe('search hits inside a block', () => {
     query.forVim = false
     view.dispatch({ effects: setSearchQuery.of(query) })
     expect(view.state.field(searchHighlightField)).toBeNull()
+  })
+})
+
+describe('T chart', () => {
+  const T = [
+    '```tchart',
+    '- 中心',
+    '  - なぜ？',
+    '    - w1',
+    '    - w2',
+    '  - それで？',
+    '    - s1',
+    '      - s1a',
+    '    - s2',
+    '  - 本当に？',
+    '```',
+  ].join('\n')
+
+  it('starts at the center and goes to the question in the pressed direction', () => {
+    view = setup(T)
+    enterDiagram(view)
+    expect(selected(view)).toEqual([0])
+    moveSelection(view, 'up')
+    expect(selected(view)).toEqual([0])
+    moveSelection(view, 'down')
+    expect(selected(view)).toEqual([0, 0])
+    moveSelection(view, 'down')
+    expect(selected(view)).toEqual([0, 0, 0])
+    moveSelection(view, 'right')
+    expect(selected(view)).toEqual([0, 0, 1])
+    moveSelection(view, 'up')
+    moveSelection(view, 'up')
+    expect(selected(view)).toEqual([0])
+    moveSelection(view, 'left')
+    expect(selected(view)).toEqual([0, 2])
+    moveSelection(view, 'right')
+    moveSelection(view, 'right')
+    expect(selected(view)).toEqual([0, 1])
+    moveSelection(view, 'right')
+    expect(selected(view)).toEqual([0, 1, 0])
+    expect(blockText(view)).toBe(T)
+  })
+
+  it('stays inside the arm when moving between answers', () => {
+    view = setup(T)
+    enterDiagram(view, undefined, [0, 1, 1])
+    moveSelection(view, 'down')
+    expect(selected(view)).toEqual([0, 1, 1])
+    moveSelection(view, 'up')
+    expect(selected(view)).toEqual([0, 1, 0])
+    moveSelection(view, 'up')
+    expect(selected(view)).toEqual([0, 1, 0])
+  })
+
+  it('adds answers from the question and goes deeper with Tab', () => {
+    view = setup(T)
+    enterDiagram(view, undefined, [0, 2])
+    addChild(view)
+    commitEdit(view, 'r1', 'child')
+    commitEdit(view, 'r1a', 'sibling')
+    commitEdit(view, '', 'sibling')
+    expect(blockText(view)).toBe(`${T.slice(0, -4)}\n    - r1\n      - r1a\n\`\`\``)
+    expect(selected(view)).toEqual([0, 2, 0, 0])
+  })
+
+  it('keeps the center and the questions where they are', () => {
+    view = setup(T)
+    enterDiagram(view)
+    addSibling(view, 'below')
+    addChild(view)
+    deleteSubtree(view)
+    toggleFold(view)
+    expect(view.state.field(treeUiField).active?.editing).toBeNull()
+    moveSelection(view, 'right')
+    addSibling(view, 'below')
+    editNode(view, 'end')
+    deleteSubtree(view)
+    indent(view)
+    swap(view, 'down')
+    paste(view, 'below')
+    expect(view.state.field(treeUiField).active?.editing).toBeNull()
+    expect(blockText(view)).toBe(T)
+  })
+
+  it('does not outdent an answer into the questions', () => {
+    view = setup(T)
+    enterDiagram(view, undefined, [0, 1, 1])
+    outdent(view)
+    expect(blockText(view)).toBe(T)
+    indent(view)
+    expect(selected(view)).toEqual([0, 1, 0, 1])
+    outdent(view)
+    expect(blockText(view)).toBe(T)
+  })
+
+  it('swaps answers along the arm', () => {
+    view = setup(T)
+    enterDiagram(view, undefined, [0, 0, 0])
+    swap(view, 'down')
+    expect(blockText(view)).toBe(T)
+    swap(view, 'right')
+    expect(blockText(view)).toContain('    - w2\n    - w1\n')
+  })
+
+  it('edits the center without adding siblings and keeps it when emptied', () => {
+    view = setup(T)
+    enterDiagram(view)
+    editNode(view, 'end')
+    commitEdit(view, '新しい中心', 'sibling')
+    expect(blockText(view)).toBe(T.replace('- 中心', '- 新しい中心'))
+    expect(view.state.field(treeUiField).active?.editing).toBeNull()
+    expect(selected(view)).toEqual([0])
+    editNode(view, 'empty')
+    commitEdit(view, ' ', 'done')
+    expect(blockText(view)).toBe(T.replace('- 中心', '-'))
+  })
+
+  it('inserts an empty T chart and starts writing the center', () => {
+    view = setup('```tree\n- a\n```')
+    view.dispatch({ selection: { anchor: 0 } })
+    insertEmptyBlock(view, 'tchart')
+    expect(view.state.field(treeUiField).active?.editing?.path).toEqual([0])
+    commitEdit(view, '考え', 'done')
+    expect(view.state.doc.toString()).toContain(
+      '```tchart\n- 考え\n  - なぜ？\n  - それで？\n  - 本当に？\n```',
+    )
+  })
+
+  it('has no direction to switch', () => {
+    view = setup(T)
+    expect(toggleDirection(view)).toBe(false)
+    expect(blockText(view)).toBe(T)
+    expect(useStatusStore.getState().message).toContain('T 字')
+  })
+
+  it('keeps the center open when folding everything', () => {
+    view = setup(T)
+    enterDiagram(view, undefined, [0, 1, 0, 0])
+    setAllFolds(view, true)
+    expect(selected(view)).toEqual([0, 1])
+    moveSelection(view, 'left')
+    expect(selected(view)).toEqual([0])
+  })
+
+  it('selects the node hit by a search even when the questions are out of order', () => {
+    const block = '```tchart\n- 中心\n  - 本当に？\n    - r1\n  - なぜ？\n    - w1\n```'
+    view = setup(block)
+    const line = (text: string) => view.state.doc.toString().indexOf(text)
+    view.dispatch({ selection: { anchor: line('r1') }, annotations: keepCursorInBlock.of(true) })
+    expect(hitPathAtCursor(view.state)).toEqual([0, 2, 0])
+    view.dispatch({ selection: { anchor: line('w1') }, annotations: keepCursorInBlock.of(true) })
+    expect(hitPathAtCursor(view.state)).toEqual([0, 0, 0])
+    view.dispatch({ selection: { anchor: line('なぜ') }, annotations: keepCursorInBlock.of(true) })
+    expect(hitPathAtCursor(view.state)).toEqual([0, 0])
   })
 })

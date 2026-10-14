@@ -103,9 +103,20 @@ export const diagramCommands: Command[] = [
       }
     },
   },
+  {
+    id: 'diagram.insertTChart',
+    title: '空の T 字の図を差し込む',
+    keys: [{ scope: 'normal', sequence: '<Space>tt' }],
+    when: ({ view }) => view !== null,
+    run: ({ view }) => {
+      if (view) {
+        insertEmptyBlock(view, 'tchart')
+      }
+    },
+  },
   ...(['down', 'up'] as const).map((direction): Command => ({
     id: direction === 'down' ? 'diagram.stepDown' : 'diagram.stepUp',
-    title: direction === 'down' ? '下のツリーブロックへ' : '上のツリーブロックへ',
+    title: direction === 'down' ? '下の図のブロックへ' : '上の図のブロックへ',
     keys: [{ scope: 'normal', sequence: direction === 'down' ? 'j' : 'k' }],
     when: ({ view }) => view !== null && adjacentBlock(view, direction) !== null,
     run: ({ view }) => {
@@ -115,7 +126,7 @@ export const diagramCommands: Command[] = [
     },
   })),
   blockCommand('diagram.enter', 'DIAGRAM モードに入る', 'Enter', (view) => enterDiagram(view)),
-  blockCommand('diagram.source', 'ツリーのソースを表示する', 'gs', (view) => toggleSource(view)),
+  blockCommand('diagram.source', '図のソースを表示する', 'gs', (view) => toggleSource(view)),
   blockCommand('diagram.blockDown', 'ブロックの次の行へ', 'j', (view) => leaveBlock(view, 'down')),
   blockCommand('diagram.blockUp', 'ブロックの前の行へ', 'k', (view) => leaveBlock(view, 'up')),
   blockCommand('diagram.openBelow', 'ブロックの下に行を足す', 'o', (view) =>

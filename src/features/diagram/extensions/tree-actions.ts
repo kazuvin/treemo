@@ -9,7 +9,7 @@ import { getCM, Vim } from '@replit/codemirror-vim'
 import { isReading } from '@/lib/reading'
 import { useStatusStore } from '@/stores/status-store'
 import { useDiagramStore } from '../stores/diagram-store'
-import type { TreeNode } from '../types/tree'
+import type { DiagramKind, TreeNode } from '../types/tree'
 import { directionOf, type ScreenDirection, treeMove, withDirection } from '../utils/direction'
 import {
   appendChild,
@@ -30,6 +30,7 @@ import {
 } from '../utils/ops'
 import { parseNodes } from '../utils/parse'
 import { normalizeContent, serializeNodes, serializeTreeBlock } from '../utils/serialize'
+import { EMPTY_TCHART, tchartAllows, tchartMove, tFlowOf, tPartOf } from '../utils/t-chart'
 import {
   type ActiveTree,
   activeBlock,
@@ -45,7 +46,10 @@ import {
   updateTreeUi,
 } from './tree-state'
 
-const EMPTY_BLOCK = '```tree\n-\n```'
+const EMPTY_BLOCKS: Record<DiagramKind, string> = {
+  tree: '```tree\n-\n```',
+  tchart: EMPTY_TCHART,
+}
 
 function current(state: EditorState) {
   const ui = state.field(treeUiField)
@@ -54,6 +58,15 @@ function current(state: EditorState) {
     return null
   }
   return { ui, active: ui.active, block, roots: rootsOf(block, ui) }
+}
+
+/** T 字の図では、中心と問いに効かない操作がある（docs/t-chart.md の「DIAGRAM モード」） */
+function allows(
+  block: ParsedBlock,
+  action: Parameters<typeof tchartAllows>[0],
+  path: number[] | null,
+): boolean {
+  return block.block.kind !== 'tchart' || (path !== null && tchartAllows(action, path))
 }
 
 function patchActive(patch: Partial<ActiveTree>) {
@@ -272,15 +285,19 @@ export function openLineAroundBlock(view: EditorView, where: 'above' | 'below'):
   return true
 }
 
-/** カーソルの行に空のツリーブロックを差し込み、最初のノードを書き始める（F-TREE-7） */
-export function insertEmptyBlock(view: EditorView): void {
+/**
+ * カーソルの行に空の図のブロックを差し込み、最初のノード（T 字の図なら中心）を書き始める
+ * （F-TREE-7、F-TCHART-4）
+ */
+export function insertEmptyBlock(view: EditorView, kind: DiagramKind = 'tree'): void {
   if (isReading(view.state)) {
     return
   }
   const line = view.state.doc.lineAt(view.state.selection.main.head)
   const empty = line.text.trim() === ''
   const from = empty ? line.from : line.to + 1
-  const insert = empty ? EMPTY_BLOCK : `\n${EMPTY_BLOCK}`
+  const block = EMPTY_BLOCKS[kind]
+  const insert = empty ? block : `\n${block}`
   const at = empty ? line.from : line.to
   view.dispatch({
     changes: { from: at, to: empty ? line.to : at, insert },
@@ -302,36 +319,52 @@ export function insertEmptyBlock(view: EditorView): void {
   view.focus()
 }
 
-/** h / j / k / l。画面の向きで動く（横向きなら h / l が親と子、縦向きなら k / j が親と子） */
+/**
+ * h / j / k / l。画面の向きで動く（横向きなら h / l が親と子、縦向きなら k / j が親と子）。
+ * T 字の図では、中心から押した向きの問いへ移り、腕の中ではその腕の向きで動く
+ */
 export function moveSelection(view: EditorView, screen: ScreenDirection) {
   const cur = current(view.state)
   if (!cur || !cur.active.path) {
     return
   }
-  const direction = treeMove(directionOf(cur.block.block.info), screen)
   const path = cur.active.path
+  const tchart = cur.block.block.kind === 'tchart'
+  const move = tchart
+    ? tchartMove(path, screen)
+    : treeMove(directionOf(cur.block.block.info), screen)
   const node = getNode(cur.roots, path)
   const key = path.join('.')
   let next: number[] | null = null
   const lastChild = { ...cur.active.lastChild }
-  switch (direction) {
-    case 'parent':
-      if (path.length > 1) {
-        next = path.slice(0, -1)
-        lastChild[next.join('.')] = path.at(-1) ?? 0
-      }
-      break
-    case 'child':
-      if (node && node.children.length > 0 && !node.collapsed) {
-        next = [...path, Math.min(lastChild[key] ?? 0, node.children.length - 1)]
-      }
-      break
-    case 'prev':
-    case 'next':
-      next = sameDepthNeighbor(cur.roots, path, direction === 'prev' ? 'up' : 'down')
-      break
-    default:
-      break
+  if (Array.isArray(move)) {
+    next = move
+  } else if (move !== null) {
+    switch (move) {
+      case 'parent':
+        if (path.length > 1) {
+          next = path.slice(0, -1)
+          lastChild[next.join('.')] = path.at(-1) ?? 0
+        }
+        break
+      case 'child':
+        if (node && node.children.length > 0 && !node.collapsed) {
+          next = [...path, Math.min(lastChild[key] ?? 0, node.children.length - 1)]
+        }
+        break
+      case 'prev':
+      case 'next':
+        // T 字の図では、同じ腕の中だけを渡る
+        next = sameDepthNeighbor(
+          cur.roots,
+          path,
+          move === 'prev' ? 'up' : 'down',
+          tchart ? path.slice(0, 2) : [],
+        )
+        break
+      default:
+        break
+    }
   }
   if (next) {
     view.dispatch({ effects: patchActive({ path: next, lastChild }) })
@@ -363,7 +396,8 @@ function startEditing(result: OpResult, editing: Omit<Editing, 'path'>): Partial
 export function addSibling(view: EditorView, where: 'above' | 'below'): void {
   withTree(
     view,
-    (roots, path) => insertSibling(roots, path ?? [], where),
+    (roots, path, block) =>
+      allows(block, 'reshape', path) ? insertSibling(roots, path ?? [], where) : null,
     (r) => startEditing(r, { cursor: 'end', isNew: true }),
   )
 }
@@ -371,7 +405,12 @@ export function addSibling(view: EditorView, where: 'above' | 'below'): void {
 export function addChild(view: EditorView): void {
   withTree(
     view,
-    (roots, path) => (path ? appendChild(roots, path) : insertSibling(roots, [], 'below')),
+    (roots, path, block) => {
+      if (!allows(block, 'grow', path)) {
+        return null
+      }
+      return path ? appendChild(roots, path) : insertSibling(roots, [], 'below')
+    },
     (r) => startEditing(r, { cursor: 'end', isNew: true }),
   )
 }
@@ -393,7 +432,12 @@ export function addNodeAt(
 
 export function editNode(view: EditorView, cursor: Editing['cursor']): void {
   const cur = current(view.state)
-  if (!cur || !cur.active.path || cur.active.editing) {
+  if (
+    !cur ||
+    !cur.active.path ||
+    cur.active.editing ||
+    !allows(cur.block, 'edit', cur.active.path)
+  ) {
     return
   }
   view.dispatch({
@@ -405,6 +449,7 @@ export function editNode(view: EditorView, cursor: Editing['cursor']): void {
  * ノード編集を確定する。next が 'sibling' / 'child' なら続けて次のノードを書き始める。
  * 空白だけのノードは作らない（docs/keybindings.md の「ノード編集」）。空で確定したら、
  * 子が無ければノードを消し、子があれば部分木を消さないよう編集前の中身に戻す。
+ * T 字の図の中心は消さずに空のまま残し、兄弟も子も足さない
  */
 export function commitEdit(view: EditorView, text: string, next: 'sibling' | 'child' | 'done') {
   const cur = current(view.state)
@@ -412,8 +457,10 @@ export function commitEdit(view: EditorView, text: string, next: 'sibling' | 'ch
   if (!cur || !editing) {
     return
   }
+  const center = cur.block.block.kind === 'tchart' && tPartOf(editing.path) === 'center'
+  const follow = center ? 'done' : next
   const content = normalizeContent(text)
-  if (content === '') {
+  if (content === '' && !center) {
     if ((getNode(cur.roots, editing.path)?.children.length ?? 0) > 0) {
       view.dispatch({ effects: patchActive({ editing: null }) })
     } else {
@@ -425,35 +472,43 @@ export function commitEdit(view: EditorView, text: string, next: 'sibling' | 'ch
   }
   let result = setContent(cur.roots, editing.path, content)
   let patch: Partial<ActiveTree> = { path: result.path, editing: null }
-  if (next === 'sibling') {
+  if (follow === 'sibling') {
     result = insertSibling(result.roots, editing.path, 'below')
     patch = startEditing(result, { cursor: 'end', isNew: true })
-  } else if (next === 'child') {
+  } else if (follow === 'child') {
     result = appendChild(result.roots, editing.path)
     patch = startEditing(result, { cursor: 'end', isNew: true })
   }
   commitTree(view, cur.block, result.roots, patch)
-  if (next === 'done') {
+  if (follow === 'done') {
     view.focus()
   }
 }
 
 export function indent(view: EditorView): void {
-  withTree(view, (roots, path) => (path ? indentNode(roots, path) : null))
+  withTree(view, (roots, path, block) =>
+    path && allows(block, 'reshape', path) ? indentNode(roots, path) : null,
+  )
 }
 
 export function outdent(view: EditorView): void {
-  withTree(view, (roots, path) => (path ? outdentNode(roots, path) : null))
+  withTree(view, (roots, path, block) =>
+    path && allows(block, 'outdent', path) ? outdentNode(roots, path) : null,
+  )
 }
 
 /**
  * H / J / K / L。兄弟が並ぶ向き（横向きなら上下、縦向きなら左右）でだけ入れ替える。
- * 親子の向きのキーは何もしない
+ * 親子の向きのキーは何もしない。T 字の図では腕の向きで決まる
  */
 export function swap(view: EditorView, screen: ScreenDirection): void {
   withTree(view, (roots, path, block) => {
-    const move = treeMove(directionOf(block.block.info), screen)
-    if (!path || (move !== 'prev' && move !== 'next')) {
+    if (!path || !allows(block, 'reshape', path)) {
+      return null
+    }
+    const flow = block.block.kind === 'tchart' ? tFlowOf(path) : directionOf(block.block.info)
+    const move = flow ? treeMove(flow, screen) : null
+    if (move !== 'prev' && move !== 'next') {
       return null
     }
     return swapNode(roots, path, move === 'prev' ? 'up' : 'down')
@@ -464,6 +519,10 @@ export function swap(view: EditorView, screen: ScreenDirection): void {
 export function toggleDirection(view: EditorView): boolean {
   const block = activeBlock(view.state) ?? blockAtCursor(view.state)
   if (!block || isReading(view.state) || view.state.field(treeUiField).active?.editing) {
+    return false
+  }
+  if (block.block.kind === 'tchart') {
+    useStatusStore.getState().show('T 字の図の腕の向きは決まっているので、切り替えられません')
     return false
   }
   const { fence, info } = block.block
@@ -483,8 +542,8 @@ function setRegister(nodes: readonly TreeNode[], operator: 'yank' | 'delete'): v
 }
 
 export function deleteSubtree(view: EditorView): void {
-  withTree(view, (roots, path) => {
-    if (!path) {
+  withTree(view, (roots, path, block) => {
+    if (!path || !allows(block, 'reshape', path)) {
       return null
     }
     const result = removeNode(roots, path)
@@ -523,7 +582,10 @@ export function paste(view: EditorView, where: 'below' | 'above' | 'child'): voi
   if (nodes.length === 0) {
     return
   }
-  withTree(view, (roots, path) => {
+  withTree(view, (roots, path, block) => {
+    if (!allows(block, where === 'child' ? 'grow' : 'reshape', path)) {
+      return null
+    }
     if (where === 'child' && path) {
       return appendChild(roots, path, nodes)
     }
@@ -532,11 +594,21 @@ export function paste(view: EditorView, where: 'below' | 'above' | 'child'): voi
 }
 
 export function toggleFold(view: EditorView): void {
-  withTree(view, (roots, path) => (path ? toggleCollapsed(roots, path) : null))
+  withTree(view, (roots, path, block) =>
+    path && allows(block, 'fold', path) ? toggleCollapsed(roots, path) : null,
+  )
 }
 
 export function setAllFolds(view: EditorView, collapsed: boolean): void {
-  withTree(view, (roots, path) => ({ roots: setAllCollapsed(roots, collapsed), path }))
+  withTree(view, (roots, path, block) => {
+    const next = setAllCollapsed(roots, collapsed)
+    const center = next[0]
+    // T 字の図の中心を閉じると、図ごと見えなくなる
+    if (block.block.kind === 'tchart' && center) {
+      center.collapsed = false
+    }
+    return { roots: next, path }
+  })
 }
 
 export function toggleFullscreen(view: EditorView): void {

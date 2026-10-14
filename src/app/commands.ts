@@ -685,7 +685,7 @@ export function currentKeyOverrides(): KeyOverrides {
 function registerCommands(overrides: KeyOverrides): string[] {
   keyOverrides = overrides
   const { commands, unknown } = applyKeyOverrides(defaultCommands, overrides)
-  useCommandStore.getState().register(commands, { f: 'ファイル', t: 'ツリー' })
+  useCommandStore.getState().register(commands, { f: 'ファイル', t: '図' })
   return unknown
 }
 

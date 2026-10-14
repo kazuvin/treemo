@@ -4,7 +4,8 @@
  * 上から下へ広がる形は、縦横を入れ替えて同じように組む。
  */
 import type { TreeNode } from '../types/tree'
-import type { TreeDirection } from './direction'
+import type { FlowDirection, TreeDirection } from './direction'
+import { T_ARMS } from './t-chart'
 
 export interface Size {
   width: number
@@ -27,6 +28,8 @@ export interface LayoutOptions {
 interface Edge {
   from: string
   to: string
+  /** 親から子へ伸びる向き。辺の出入りの向きを決める */
+  flow: FlowDirection
 }
 
 export interface TreeLayout {
@@ -125,7 +128,8 @@ export function layoutTree(
   for (const [id, r] of turned.rects) {
     rects.set(id, { x: r.y, y: r.x, width: r.height, height: r.width })
   }
-  return { rects, edges: turned.edges, width: turned.height, height: turned.width }
+  const edges = turned.edges.map((edge) => ({ ...edge, flow: 'tb' as const }))
+  return { rects, edges, width: turned.height, height: turned.width }
 }
 
 function layoutLeftToRight(
@@ -162,7 +166,7 @@ function layoutLeftToRight(
       continue
     }
     for (const child of p.node.children) {
-      edges.push({ from: p.node.id, to: child.id })
+      edges.push({ from: p.node.id, to: child.id, flow: 'lr' })
     }
   }
   const width = Math.max(0, x - options.columnGap)
@@ -172,9 +176,10 @@ function layoutLeftToRight(
 /**
  * 親の右端の中央から子の左端の中央へ引く S 字の曲線（SVG の path の d）。
  * 両端で水平に出入りするよう、制御点は端点と同じ高さに横へ半分ずつ寄せる。
- * 縦向きでは親の下端の中央から子の上端の中央へ、両端で垂直に出入りする
+ * 縦向きでは親の下端の中央から子の上端の中央へ、両端で垂直に出入りする。
+ * 右から左では親の左端から子の右端へ引く
  */
-export function edgePath(parent: Rect, child: Rect, direction: TreeDirection = 'lr'): string {
+export function edgePath(parent: Rect, child: Rect, direction: FlowDirection = 'lr'): string {
   if (direction === 'tb') {
     const sx = parent.x + parent.width / 2
     const sy = parent.y + parent.height
@@ -183,10 +188,125 @@ export function edgePath(parent: Rect, child: Rect, direction: TreeDirection = '
     const k = Math.max(0, ey - sy) / 2
     return `M${sx},${sy} C${sx},${sy + k} ${ex},${ey - k} ${ex},${ey}`
   }
+  if (direction === 'rl') {
+    const sx = parent.x
+    const sy = parent.y + parent.height / 2
+    const ex = child.x + child.width
+    const ey = child.y + child.height / 2
+    const k = Math.max(0, sx - ex) / 2
+    return `M${sx},${sy} C${sx - k},${sy} ${ex + k},${ey} ${ex},${ey}`
+  }
   const sx = parent.x + parent.width
   const sy = parent.y + parent.height / 2
   const ex = child.x
   const ey = child.y + child.height / 2
   const k = Math.max(0, ex - sx) / 2
   return `M${sx},${sy} C${sx + k},${sy} ${ex - k},${ey} ${ex},${ey}`
+}
+
+export interface TChartLayoutOptions {
+  /** 中心と問いのあいだ */
+  stemGap: number
+  /** 横の腕（それで？・本当に？）の中の間隔 */
+  side: Omit<LayoutOptions, 'direction'>
+  /** 下の腕（なぜ？）の中の間隔 */
+  down: Omit<LayoutOptions, 'direction'>
+  /** 横の腕の下端と、下の腕の上端のあいだ */
+  armGap: number
+  /** 図の左右と下に空けておく幅。腕の先にノードを足す印が入る */
+  margin: number
+}
+
+function bounds(rects: Iterable<Rect>): {
+  left: number
+  top: number
+  right: number
+  bottom: number
+} {
+  let left = Infinity
+  let top = Infinity
+  let right = -Infinity
+  let bottom = -Infinity
+  for (const r of rects) {
+    left = Math.min(left, r.x)
+    top = Math.min(top, r.y)
+    right = Math.max(right, r.x + r.width)
+    bottom = Math.max(bottom, r.y + r.height)
+  }
+  return { left, top, right, bottom }
+}
+
+/**
+ * T 字の図の配置（docs/t-chart.md の「レイアウト」）。中心の左右と下に問いを置き、
+ * 問いから先の答えはその腕の向きのツリーとして組む。下の腕が横の腕と重なるときは、
+ * 横の腕の下まで下ろす（T の縦棒が伸びる）
+ */
+export function layoutTChart(
+  roots: readonly TreeNode[],
+  sizeOf: (node: TreeNode) => Size,
+  options: TChartLayoutOptions,
+): TreeLayout {
+  const center = roots[0]
+  if (!center) {
+    return { rects: new Map(), edges: [], width: 0, height: 0 }
+  }
+  const c = { x: 0, y: 0, ...sizeOf(center) }
+  const questions = center.collapsed ? [] : center.children
+  const arms = questions.map((question, i) => {
+    const flow = T_ARMS[i]?.flow ?? 'lr'
+    const arm =
+      flow === 'tb'
+        ? layoutTree([question], sizeOf, { ...options.down, direction: 'tb' })
+        : layoutTree([question], sizeOf, options.side)
+    const mirror = (r: Rect): Rect => (flow === 'rl' ? { ...r, x: -r.x - r.width } : r)
+    const q = mirror(arm.rects.get(question.id) ?? { ...c, x: 0, y: 0 })
+    let dx = c.width / 2 - (q.x + q.width / 2)
+    let dy = c.height + options.stemGap - q.y
+    if (flow !== 'tb') {
+      dx = flow === 'lr' ? c.width + options.stemGap - q.x : -options.stemGap - (q.x + q.width)
+      dy = c.height / 2 - (q.y + q.height / 2)
+    }
+    const placed = new Map<string, Rect>()
+    for (const [id, r] of arm.rects) {
+      const m = mirror(r)
+      placed.set(id, { ...m, x: m.x + dx, y: m.y + dy })
+    }
+    const edges = [
+      { from: center.id, to: question.id, flow },
+      ...arm.edges.map((edge) => ({ ...edge, flow })),
+    ]
+    return { flow, placed, edges }
+  })
+  // 横の腕は辺も含めて箱で避ける。ノードだけを避けると、問いから答えへの辺が下の腕のノードを横切る
+  const sideBoxes = arms
+    .filter((arm) => arm.flow !== 'tb' && arm.placed.size > 0)
+    .map((arm) => bounds(arm.placed.values()))
+  const rects = new Map<string, Rect>([[center.id, c]])
+  const edges: Edge[] = []
+  for (const arm of arms) {
+    let push = 0
+    if (arm.flow === 'tb') {
+      const box = bounds(arm.placed.values())
+      for (const other of sideBoxes) {
+        if (other.left < box.right && box.left < other.right) {
+          push = Math.max(push, other.bottom + options.armGap - box.top)
+        }
+      }
+    }
+    for (const [id, r] of arm.placed) {
+      rects.set(id, { ...r, y: r.y + push })
+    }
+    edges.push(...arm.edges)
+  }
+  const box = bounds(rects.values())
+  const moved = new Map<string, Rect>()
+  for (const [id, r] of rects) {
+    moved.set(id, { ...r, x: r.x - box.left + options.margin, y: r.y - box.top })
+  }
+  return {
+    rects: moved,
+    edges,
+    width: box.right - box.left + options.margin * 2,
+    height: box.bottom - box.top + options.margin,
+  }
 }

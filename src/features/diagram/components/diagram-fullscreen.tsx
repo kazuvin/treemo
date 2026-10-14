@@ -27,7 +27,9 @@ export function DiagramFullscreen({ view }: { view: EditorView | null }) {
       }}
     >
       <div className="flex items-start gap-4 px-6 py-3">
-        {showGuide && <KeyGuide editing={active.editing} direction={active.direction} />}
+        {showGuide && (
+          <KeyGuide editing={active.editing} kind={active.kind} direction={active.direction} />
+        )}
         <ZoomControl className="ml-auto" />
       </div>
       {/* 図が画面より低いときは上下の中央に置き、はみ出すときは上端から見せる（safe） */}
@@ -40,6 +42,7 @@ export function DiagramFullscreen({ view }: { view: EditorView | null }) {
             showGuide={showGuide}
             zoom={zoom}
             fitAxes="both"
+            kind={active.kind}
             direction={active.direction}
             onAddNode={(path, where) => addNodeAt(view, active.from, path, where)}
             onSelectNode={(path) => selectNode(view, active.from, path)}

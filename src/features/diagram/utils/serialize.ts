@@ -38,7 +38,9 @@ export function serializeNodes(roots: readonly TreeNode[], depth = 0): string[] 
 }
 
 export function serializeTreeBlock(block: TreeBlock): string {
-  return [`${block.fence}tree${block.info}`, ...serializeNodes(block.roots), block.closing].join(
-    '\n',
-  )
+  return [
+    `${block.fence}${block.kind}${block.info}`,
+    ...serializeNodes(block.roots),
+    block.closing,
+  ].join('\n')
 }

@@ -47,6 +47,7 @@ function buildDecorations(state: EditorState): DecorationSet {
       hitId: status === 'selected' ? hitId : null,
       search,
       editing: active?.editing ?? null,
+      kind: block.block.kind,
       direction: directionOf(block.block.info),
       foldKey: collapsedIds(roots).join(','),
     })
@@ -93,6 +94,7 @@ function publish(state: EditorState): void {
       path: ui.active.path,
       editing: ui.active.editing,
       fullscreen: ui.active.fullscreen,
+      kind: block.block.kind,
       direction: directionOf(block.block.info),
     })
   } else if (tree.active) {

@@ -211,12 +211,17 @@ export function nodeLineSpan(
   }
   walk(rootsOf(block, state.field(treeUiField)))
   const id = path.join('.')
-  const i = visible.findIndex((node) => node.id === id)
-  const line = visible[i]?.line
+  const line = visible.find((node) => node.id === id)?.line
   if (line === undefined) {
     return null
   }
-  const next = visible.slice(i + 1).find((node) => node.line !== undefined)?.line
+  // T 字の図は問いを決まった順に並べ直すので、並びではなく行番号で次のノードを探す
+  let next: number | undefined
+  for (const node of visible) {
+    if (node.line !== undefined && node.line > line && (next === undefined || node.line < next)) {
+      next = node.line
+    }
+  }
   const doc = state.doc
   const closing = doc.lineAt(block.to).number - doc.lineAt(block.from).number
   return [line, (next ?? closing) - 1]
@@ -225,14 +230,16 @@ export function nodeLineSpan(
 /** カーソルをブロックの中の行に置いても、DIAGRAM モードに入らせない（DIAGRAM モードの n / N が使う） */
 export const keepCursorInBlock = Annotation.define<boolean>()
 
-/** 行はノードの並び（行きがけ順）と同じ順なので、その行より前で最後に始まるノードを探す */
+/**
+ * その行より前で最後に始まるノードを探す。T 字の図は問いを並べ直し、無い問いを足すので、
+ * 並びの順に頼らず、行番号のいちばん近いものを取る
+ */
 function nodeAtLine(nodes: readonly TreeNode[], line: number): TreeNode | null {
   let hit: TreeNode | null = null
   for (const node of nodes) {
-    if (node.line === undefined || node.line > line) {
-      break
+    if (node.line !== undefined && node.line <= line && (hit?.line ?? -1) < node.line) {
+      hit = node
     }
-    hit = node
   }
   if (!hit || hit.collapsed) {
     return hit

@@ -1,12 +1,27 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
-import type { TreeNode } from '../types/tree'
-import type { TreeDirection } from '../utils/direction'
+import type { DiagramKind, TreeNode } from '../types/tree'
+import type { FlowDirection, TreeDirection } from '../utils/direction'
 import type { Rect } from '../utils/layout'
 import { ease, lerpPosition, matchNodes, type VisibleNode } from '../utils/motion'
+import { tFlowOf } from '../utils/t-chart'
 
 const DURATION = 200
 /** 現れるノードは、この距離だけ親の側（横向きなら左、縦向きなら上）から滑り込む */
 const ENTER_OFFSET = 12
+
+/** 現れるノードが滑り込み始める位置。T 字の図では腕ごとに親の側が違う */
+function enterFrom(to: Rect, flow: FlowDirection): Rect {
+  switch (flow) {
+    case 'lr':
+      return { ...to, x: to.x - ENTER_OFFSET }
+    case 'rl':
+      return { ...to, x: to.x + ENTER_OFFSET }
+    case 'tb':
+      return { ...to, y: to.y - ENTER_OFFSET }
+    default:
+      return to
+  }
+}
 
 interface Tween {
   start: number
@@ -67,6 +82,7 @@ function signatureOf(rects: ReadonlyMap<string, Rect>): string {
 export function useTweenedRects(
   nodes: readonly TreeNode[],
   target: ReadonlyMap<string, Rect>,
+  kind: DiagramKind = 'tree',
   direction: TreeDirection = 'lr',
 ): TweenedRects {
   const [tween, setTween] = useState<Tween | null>(null)
@@ -111,12 +127,9 @@ export function useTweenedRects(
       if (was) {
         from.set(node.id, was)
       } else if (to) {
-        from.set(
-          node.id,
-          direction === 'lr'
-            ? { ...to, x: to.x - ENTER_OFFSET }
-            : { ...to, y: to.y - ENTER_OFFSET },
-        )
+        const flow =
+          kind === 'tchart' ? (tFlowOf(node.id.split('.').map(Number)) ?? 'tb') : direction
+        from.set(node.id, enterFrom(to, flow))
       }
       // 現れている途中で配置し直しても、現れ始めた時刻は引き継ぐ
       const since = old === undefined ? start : tween?.entering.get(old)
@@ -126,7 +139,7 @@ export function useTweenedRects(
     }
     setTween({ start, from, entering })
     setNow(start)
-  }, [nodes, signature, target, tween, direction])
+  }, [nodes, signature, target, tween, kind, direction])
 
   useEffect(() => {
     if (!tween) {

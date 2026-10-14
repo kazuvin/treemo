@@ -17,6 +17,7 @@ paths:
 | 色・余白・書体・角丸を決める、UI の部品を足す | `docs/kotoba-design-system.md` |
 | エディタ、ツリー、状態の置き場所 | `docs/architecture.md` |
 | ツリーブロックの記法、書き戻し、DIAGRAM モードの操作 | `docs/tree-block.md` |
+| T 字の図の記法、レイアウト、DIAGRAM モードでの違い | `docs/t-chart.md` |
 | キーの割り当て、モード、手がかりの表示 | `docs/keybindings.md` |
 | テストを書く | `docs/testing.md` |
 

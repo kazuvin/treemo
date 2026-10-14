@@ -4,6 +4,9 @@
  */
 export type TreeDirection = 'lr' | 'tb'
 
+/** 子が伸びる向き。ツリーの向きに、T 字の図の左の腕（右から左）を足したもの */
+export type FlowDirection = TreeDirection | 'rl'
+
 /** 画面の上での向き。h / j / k / l と H / J / K / L が指す */
 export type ScreenDirection = 'left' | 'right' | 'up' | 'down'
 
@@ -28,14 +31,15 @@ export function withDirection(info: string, direction: TreeDirection): string {
 
 /**
  * 画面の向きを、ツリーの上での動きに読み替える。横向きなら左右が親と子、上下が兄弟。
- * 縦向きなら上下が親と子、左右が兄弟になる
+ * 縦向きなら上下が親と子、左右が兄弟になる。右から左では左右の親と子が入れ替わる
  */
 export function treeMove(
-  direction: TreeDirection,
+  direction: FlowDirection,
   screen: ScreenDirection,
 ): 'parent' | 'child' | 'prev' | 'next' {
   const moves = {
     lr: { left: 'parent', right: 'child', up: 'prev', down: 'next' },
+    rl: { right: 'parent', left: 'child', up: 'prev', down: 'next' },
     tb: { up: 'parent', down: 'child', left: 'prev', right: 'next' },
   } as const
   return moves[direction][screen]

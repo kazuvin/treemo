@@ -2,7 +2,7 @@ import { Code } from '@/components/ui/code'
 import { type KeyHint, KeyHints } from '@/components/ui/key-hints'
 import { cn } from '@/lib/cn'
 import type { Editing } from '../extensions/tree-state'
-import type { StrayLine, TreeNode } from '../types/tree'
+import type { DiagramKind, StrayLine, TreeNode } from '../types/tree'
 import type { TreeDirection } from '../utils/direction'
 import type { Zoom } from '../utils/zoom'
 import { KeyGuide } from './key-guide'
@@ -23,6 +23,9 @@ const SELECTED_HINTS: KeyHint[] = [
   { keys: ['j', 'k'], label: '前後の行へ' },
 ]
 
+/** T 字の図は腕の向きが決まっているので、縦横の切り替えは無い */
+const TCHART_SELECTED_HINTS = SELECTED_HINTS.filter((hint) => !hint.keys.includes('gr'))
+
 const EMPTY_HINTS: KeyHint[] = [
   { keys: ['Enter'], label: 'DIAGRAM モードに入る' },
   { keys: ['o'], label: 'ノードを足す' },
@@ -36,6 +39,7 @@ interface TreeBlockViewProps {
   hitId: string | null
   search: RegExp | null
   editing: Editing | null
+  kind: DiagramKind
   direction: TreeDirection
   showGuide: boolean
   zoom: Zoom
@@ -54,6 +58,7 @@ export function TreeBlockView({
   hitId,
   search,
   editing,
+  kind,
   direction,
   showGuide,
   zoom,
@@ -95,6 +100,7 @@ export function TreeBlockView({
                 hitId={status === 'selected' ? hitId : null}
                 search={search}
                 editing={status === 'diagram' ? editing : null}
+                kind={kind}
                 direction={direction}
                 showGuide={showGuide}
                 zoom={zoom}
@@ -122,10 +128,15 @@ export function TreeBlockView({
               </ul>
             </div>
           )}
-          {status === 'selected' && <KeyHints className="mt-2" hints={SELECTED_HINTS} />}
+          {status === 'selected' && (
+            <KeyHints
+              className="mt-2"
+              hints={kind === 'tchart' ? TCHART_SELECTED_HINTS : SELECTED_HINTS}
+            />
+          )}
           {status === 'diagram' && (
             <div className="mt-2 flex items-start gap-4">
-              {showGuide && <KeyGuide editing={editing} direction={direction} />}
+              {showGuide && <KeyGuide editing={editing} kind={kind} direction={direction} />}
               <ZoomControl className="ml-auto" />
             </div>
           )}

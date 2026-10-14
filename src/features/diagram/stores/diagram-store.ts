@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 import type { Editing } from '../extensions/tree-state'
-import type { StrayLine, TreeNode } from '../types/tree'
+import type { DiagramKind, StrayLine, TreeNode } from '../types/tree'
 import type { TreeDirection } from '../utils/direction'
 import { DEFAULT_ZOOM, sanitizeZoom, type Zoom } from '../utils/zoom'
 
@@ -12,6 +12,7 @@ interface ActiveSnapshot {
   path: number[] | null
   editing: Editing | null
   fullscreen: boolean
+  kind: DiagramKind
   direction: TreeDirection
 }
 

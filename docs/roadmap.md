@@ -127,3 +127,10 @@ MVP の外で足したもの。読む: [要件定義](requirements.md) の F-EDI
 
 - [x] **10-1 コメント。** F-EDIT-11。`features/editor/utils/comment.ts`、
   `features/editor/extensions/comment.ts`、`<Space>c`。
+
+## M11 T 字の図
+
+MVP の外で足したもの。読む: [T 字の図](t-chart.md)、[要件定義](requirements.md) の TCHART
+
+- [x] **11-1 T 字の図。** F-TCHART-1〜4。```` ```tchart ````、`features/diagram/utils/t-chart.ts`、
+  `layoutTChart`、`<Space>tt`。

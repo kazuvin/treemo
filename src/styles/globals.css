@@ -276,6 +276,7 @@
   --animate-fade-slide-left: var(--animate-fade-in), var(--animate-slide-left);
   /** ツリーの印がノードから離れる向きへ少し滑って現れる */
   --animate-nudge-in-x: 0.16s var(--ease-standard) nudge-in-x;
+  --animate-nudge-in-x-reverse: 0.16s var(--ease-standard) nudge-in-x-reverse;
   --animate-nudge-in-y: 0.16s var(--ease-standard) nudge-in-y;
 
   /** キーフレーム */
@@ -359,6 +360,13 @@
     from {
       opacity: 0;
       transform: translateX(-4px);
+    }
+  }
+
+  @keyframes nudge-in-x-reverse {
+    from {
+      opacity: 0;
+      transform: translateX(4px);
     }
   }
 

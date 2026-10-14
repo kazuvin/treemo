@@ -16,10 +16,14 @@ export interface StrayLine {
   text: string
 }
 
+/** 図の種類。開始フェンスの名前（```tree / ```tchart）で分ける */
+export type DiagramKind = 'tree' | 'tchart'
+
 export interface TreeBlock {
+  kind: DiagramKind
   /** 開始フェンスの記号と数（例: "```"） */
   fence: string
-  /** info 文字列の tree より後ろ。読めなくても保持する */
+  /** info 文字列の、図の種類の名前より後ろ。読めなくても保持する */
   info: string
   /** 終了フェンスの行。元のまま書き戻す */
   closing: string

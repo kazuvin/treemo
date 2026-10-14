@@ -9,10 +9,10 @@ export interface BlockRange {
 }
 
 const FENCE = /^( {0,3})(`{3,}|~{3,})(.*)$/
-const TREE_INFO = /^tree(\s|$)/
+const DIAGRAM_INFO = /^(tree|tchart)(\s|$)/
 
 /**
- * メモの中のツリーブロックを探す。閉じていないブロックは扱わない
+ * メモの中の図のブロック（```tree と ```tchart）を探す。閉じていないブロックは扱わない
  * （書いている途中でメモの残りが丸ごと絵になるのを避ける）。
  * 他のコードブロックの中の ```tree は拾わない。
  */
@@ -44,7 +44,7 @@ export function findTreeBlocks(doc: Text): BlockRange[] {
       char: fence[0] ?? '`',
       length: fence.length,
       from: line.from,
-      tree: indent === '' && TREE_INFO.test(rest),
+      tree: indent === '' && DIAGRAM_INFO.test(rest),
     }
   }
   return blocks

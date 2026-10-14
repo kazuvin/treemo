@@ -12,7 +12,7 @@ Treemo をどう組み立てるか。何を作るかは [要件定義](requireme
 │   └─ features                                            │
 │       vault   ─ ファイル一覧・スイッチャー・自動保存     │
 │       editor  ─ CodeMirror 6 + Vim + ライブプレビュー    │
-│       diagram ─ 図のブロック（今はツリー）・DIAGRAM モード│
+│       diagram ─ ツリー・T 字の図・DIAGRAM モード         │
 │       commands─ コマンド登録・パレット・which-key・ヒント│
 └───────────────┬──────────────────────────────────────────┘
                 │ invoke（コマンド） / event（vault://changed）
